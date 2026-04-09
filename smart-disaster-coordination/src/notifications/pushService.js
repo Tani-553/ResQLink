@@ -3,12 +3,15 @@
 
 const webpush = require('web-push');
 
-// VAPID configuration
-webpush.setVapidDetails(
-  process.env.VAPID_MAILTO || 'mailto:admin@disaster-coord.app',
-  process.env.VAPID_PUBLIC_KEY,
-  process.env.VAPID_PRIVATE_KEY
-);
+const hasVapidKeys = Boolean(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY);
+
+if (hasVapidKeys) {
+  webpush.setVapidDetails(
+    process.env.VAPID_MAILTO || 'mailto:admin@disaster-coord.app',
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
+  );
+}
 
 // In-memory subscription store (use DB in production)
 const subscriptions = new Map(); // userId -> pushSubscription
@@ -21,6 +24,7 @@ const saveSubscription = async (userId, subscription) => {
 
 // Send PWA Web Push to a specific user
 const sendWebPush = async (userId, { title, body, icon = '/icons/icon-192.png', data = {} }) => {
+  if (!hasVapidKeys) return;
   const subscription = subscriptions.get(userId.toString());
   if (!subscription) return;
 

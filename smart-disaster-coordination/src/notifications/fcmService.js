@@ -5,8 +5,16 @@ const admin = require('firebase-admin');
 const User = require('../backend/models/User');
 const Notification = require('../backend/models/Notification');
 
-// Initialize Firebase Admin SDK
-if (!admin.apps.length) {
+const hasFirebaseCreds = Boolean(
+  process.env.FIREBASE_PROJECT_ID &&
+  process.env.FIREBASE_PRIVATE_KEY &&
+  process.env.FIREBASE_CLIENT_EMAIL
+);
+
+const initializeFirebase = () => {
+  if (!hasFirebaseCreds) return false;
+  if (admin.apps.length) return true;
+
   admin.initializeApp({
     credential: admin.credential.cert({
       projectId: process.env.FIREBASE_PROJECT_ID,
@@ -15,11 +23,13 @@ if (!admin.apps.length) {
     }),
     databaseURL: process.env.FIREBASE_DATABASE_URL,
   });
-}
+  return true;
+};
 
 // Send FCM push to a single user by their FCM token
 const sendToUser = async (userId, { title, body, data = {} }) => {
   try {
+    if (!initializeFirebase()) return;
     const user = await User.findById(userId).select('fcmToken');
     if (!user || !user.fcmToken) return;
 
@@ -37,6 +47,7 @@ const sendToUser = async (userId, { title, body, data = {} }) => {
 
 // Send FCM to multiple users
 const sendToMany = async (userIds, payload) => {
+  if (!hasFirebaseCreds) return;
   await Promise.allSettled(userIds.map(id => sendToUser(id, payload)));
 };
 

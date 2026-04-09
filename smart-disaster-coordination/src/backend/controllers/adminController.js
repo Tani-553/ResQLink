@@ -1,92 +1,124 @@
-// controllers/adminController.js — Member 2: Backend Developer
 const User = require('../models/User');
 const NGOProfile = require('../models/NGOProfile');
 const HelpRequest = require('../models/HelpRequest');
 const Notification = require('../models/Notification');
+const { broadcastEmergency } = require('../../notifications/fcmService');
 
-// GET /api/admin/dashboard — System stats
 exports.getDashboard = async (req, res) => {
   try {
-    const [totalRequests, pendingRequests, resolvedRequests, totalVolunteers, totalNGOs, activeNGOs] = await Promise.all([
+    const [
+      totalRequests,
+      pendingRequests,
+      resolvedRequests,
+      totalVolunteers,
+      totalNGOs,
+      activeNGOs,
+      openTasks,
+      totalUsers
+    ] = await Promise.all([
       HelpRequest.countDocuments(),
       HelpRequest.countDocuments({ status: 'pending' }),
       HelpRequest.countDocuments({ status: 'resolved' }),
       User.countDocuments({ role: 'volunteer', isActive: true }),
       NGOProfile.countDocuments(),
       NGOProfile.countDocuments({ isApproved: true }),
+      HelpRequest.countDocuments({ status: { $in: ['assigned', 'in-progress'] } }),
+      User.countDocuments()
     ]);
-    res.json({ success: true, data: { totalRequests, pendingRequests, resolvedRequests, totalVolunteers, totalNGOs, activeNGOs } });
+
+    return res.json({
+      success: true,
+      data: { totalRequests, pendingRequests, resolvedRequests, totalVolunteers, totalNGOs, activeNGOs, openTasks, totalUsers }
+    });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 
-// GET /api/admin/ngos — List NGOs pending verification
 exports.getNGOs = async (req, res) => {
   try {
     const { approved } = req.query;
     const filter = approved !== undefined ? { isApproved: approved === 'true' } : {};
     const ngos = await NGOProfile.find(filter).populate('user', 'name email phone').sort({ createdAt: -1 });
-    res.json({ success: true, count: ngos.length, data: ngos });
+    return res.json({ success: true, count: ngos.length, data: ngos });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 
-// PUT /api/admin/ngos/:id/verify — Approve or reject NGO
 exports.verifyNGO = async (req, res) => {
   try {
     const { approved } = req.body;
+    if (typeof approved !== 'boolean') {
+      return res.status(400).json({ success: false, message: 'The approved field must be true or false.' });
+    }
+
     const ngo = await NGOProfile.findByIdAndUpdate(
       req.params.id,
-      { isApproved: approved, approvedBy: req.user._id, approvedAt: approved ? new Date() : null },
+      { isApproved: approved, approvedBy: req.user._id, approvedAt: new Date() },
       { new: true }
     ).populate('user', 'name email');
 
-    if (!ngo) return res.status(404).json({ success: false, message: 'NGO not found.' });
+    if (!ngo) {
+      return res.status(404).json({ success: false, message: 'NGO not found.' });
+    }
 
-    // Notify NGO user
+    await User.findByIdAndUpdate(ngo.user._id, { isVerified: approved });
+
     await Notification.create({
       recipient: ngo.user._id,
       type: 'ngo-approved',
       title: approved ? 'NGO Approved!' : 'NGO Application Rejected',
-      message: approved ? `Your NGO "${ngo.orgName}" has been approved. You can now access the NGO dashboard.`
-                        : `Your NGO "${ngo.orgName}" application was not approved. Please contact admin.`,
+      message: approved
+        ? `Your NGO "${ngo.orgName}" has been approved. You can now access the NGO dashboard.`
+        : `Your NGO "${ngo.orgName}" application was not approved. Please contact admin.`,
       triggeredBy: req.user._id
     });
 
     req.io.emit('ngo-verified', { ngoId: ngo._id, approved });
-    res.json({ success: true, data: ngo });
+    return res.json({ success: true, data: ngo });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 
-// POST /api/admin/broadcast — Send broadcast to all users
 exports.broadcast = async (req, res) => {
   try {
     const { title, message, zone } = req.body;
-    const users = await User.find({ isActive: true });
-    const notifications = users.map(u => ({
-      recipient: u._id, type: 'broadcast', title, message,
-      data: { zone }, triggeredBy: req.user._id
+    if (!title || !message) {
+      return res.status(400).json({ success: false, message: 'Broadcast title and message are required.' });
+    }
+
+    const users = await User.find({ isActive: true }).select('_id');
+    const notifications = users.map((user) => ({
+      recipient: user._id,
+      type: 'broadcast',
+      title,
+      message,
+      data: { zone },
+      triggeredBy: req.user._id
     }));
-    await Notification.insertMany(notifications);
+
+    if (notifications.length) {
+      await Notification.insertMany(notifications);
+    }
+
+    await broadcastEmergency({ title, message, zone });
     req.io.emit('broadcast', { title, message, zone });
-    res.json({ success: true, message: `Broadcast sent to ${users.length} users.` });
+
+    return res.json({ success: true, message: `Broadcast sent to ${users.length} users.` });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 
-// GET /api/admin/users — All users
 exports.getUsers = async (req, res) => {
   try {
     const { role } = req.query;
     const filter = role ? { role } : {};
     const users = await User.find(filter).select('-password').sort({ createdAt: -1 });
-    res.json({ success: true, count: users.length, data: users });
+    return res.json({ success: true, count: users.length, data: users });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
