@@ -1,16 +1,24 @@
-// tests/auth.test.js — Member 3: Database Engineer & Testing Lead
+jest.mock('../src/backend/services/realtimeLocationService', () => ({
+  syncUserLocation: jest.fn().mockResolvedValue(true)
+}));
+
 const request = require('supertest');
 const mongoose = require('mongoose');
+const { syncUserLocation } = require('../src/backend/services/realtimeLocationService');
 const { app } = require('../src/backend/server');
 const User = require('../src/backend/models/User');
 
 beforeAll(async () => {
-  await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/disaster_test');
+  if (mongoose.connection.readyState === 0) {
+    await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/disaster_test');
+  }
 });
 
 afterAll(async () => {
   await User.deleteMany({ email: /test\.com$/ });
-  await mongoose.connection.close();
+  if (mongoose.connection.readyState !== 0) {
+    await mongoose.connection.close();
+  }
 });
 
 describe('POST /api/auth/register', () => {
@@ -86,5 +94,33 @@ describe('GET /api/auth/me', () => {
   it('should reject request without token', async () => {
     const res = await request(app).get('/api/auth/me');
     expect(res.statusCode).toBe(401);
+  });
+});
+
+describe('PUT /api/auth/update-location', () => {
+  let volunteerToken;
+
+  beforeAll(async () => {
+    const res = await request(app).post('/api/auth/login').send({
+      email: 'volunteer_auth@test.com',
+      password: 'Test@1234'
+    });
+    volunteerToken = res.body.token;
+  });
+
+  it('should update location and sync it to the live location service', async () => {
+    const res = await request(app)
+      .put('/api/auth/update-location')
+      .set('Authorization', `Bearer ${volunteerToken}`)
+      .send({ longitude: 80.2707, latitude: 13.0827 });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.user.location.coordinates).toEqual([80.2707, 13.0827]);
+    expect(syncUserLocation).toHaveBeenCalledWith(expect.objectContaining({
+      role: 'volunteer',
+      longitude: 80.2707,
+      latitude: 13.0827,
+      source: 'api'
+    }));
   });
 });

@@ -1,7 +1,8 @@
 const HelpRequest = require('../models/HelpRequest');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
-const { sendNotificationToNearby, notifyVictimAccepted, sendToUser } = require('../../notifications/fcmService');
+const { sendNotificationToNearby, notifyVictimAccepted, sendToMany } = require('../../notifications/fcmService');
+const { sendWebPushToMany } = require('../../notifications/pushService');
 const { findNearestVolunteers } = require('../services/matchingService');
 
 const VALID_STATUSES = ['pending', 'assigned', 'in-progress', 'resolved', 'cancelled'];
@@ -194,23 +195,47 @@ exports.updateStatus = async (req, res) => {
       status
     });
 
+    const requestId = helpRequest._id.toString();
     const title = status === 'resolved' ? 'Request Resolved' : 'Request Status Updated';
     const message = `Your request is now marked as "${status}".`;
-
-    await Notification.create({
+    const notifications = [{
       recipient: helpRequest.victim,
       type: status === 'resolved' ? 'request-resolved' : 'task-update',
       title,
       message,
-      data: { requestId: helpRequest._id.toString(), status },
+      data: { requestId, status },
       triggeredBy: req.user._id
-    });
+    }];
+    const pushRecipients = [helpRequest.victim];
 
-    await sendToUser(helpRequest.victim, {
-      title,
-      body: message,
-      data: { requestId: helpRequest._id.toString(), status }
-    });
+    if (status === 'resolved' && helpRequest.assignedVolunteer) {
+      notifications.push({
+        recipient: helpRequest.assignedVolunteer,
+        type: 'request-resolved',
+        title,
+        message: 'The request assigned to you has been marked as "resolved".',
+        data: { requestId, status },
+        triggeredBy: req.user._id
+      });
+      pushRecipients.push(helpRequest.assignedVolunteer);
+    }
+
+    if (status !== 'resolved') {
+      const admins = await User.find({ role: 'admin', isActive: true }).select('_id');
+      notifications.push(...admins.map((admin) => ({
+        recipient: admin._id,
+        type: 'task-update',
+        title: `Request ${status}`,
+        message: `Request ${requestId} is now marked as "${status}".`,
+        data: { requestId, status },
+        triggeredBy: req.user._id
+      })));
+      pushRecipients.push(...admins.map((admin) => admin._id));
+    }
+
+    await Notification.insertMany(notifications);
+    await sendToMany(pushRecipients, { title, body: message, data: { requestId, status } });
+    await sendWebPushToMany(pushRecipients, { title, body: message, data: { requestId, status } });
 
     return res.json({ success: true, data: helpRequest });
   } catch (err) {

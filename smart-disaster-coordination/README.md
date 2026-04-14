@@ -1,180 +1,132 @@
-# 🛡️ Smart Disaster Resource Coordination System
+# Smart Disaster Resource Coordination System
 
-A web-based Progressive Web App (PWA) that connects **Victims**, **Volunteers**, **NGOs**, and **Administrators** in real time during disaster situations.
+A Progressive Web App that connects victims, volunteers, NGOs, and administrators during disaster situations.
 
----
+## Problem Statement
 
-## 📋 Problem Statement
+During disasters, help requests are often scattered across calls, chats, and social posts. This project centralizes requests, coordination, notifications, and response tracking.
 
-During disasters, help requests are scattered across multiple platforms (WhatsApp, phone calls, social media), causing poor coordination among victims, volunteers, and NGOs. This leads to delayed response and unequal distribution of relief resources.
+## Objectives
 
----
+- Centralize disaster coordination
+- Track help requests in real time
+- Connect victims with nearby volunteers and NGOs
+- Reduce duplicate allocation of relief resources
+- Improve response speed and visibility
 
-## 🎯 Objectives
-
-- Provide a **centralized platform** for disaster coordination
-- Enable **real-time help request tracking**
-- Connect victims with **nearby volunteers and NGOs**
-- Reduce **duplicate resource allocation**
-- Improve **response time and efficiency**
-
----
-
-## 👥 Team Members & Roles
+## Team Roles
 
 | Member | Role | Responsibilities |
-|--------|------|-----------------|
-| Member 1 | Frontend Developer & UI/UX Designer | React UI, PWA, Maps, GPS |
-| Member 2 | Backend Developer & Team Lead | Node.js API, Auth, Team Coordination |
-| Member 3 | Database Engineer & Notification Specialist | MongoDB, Firebase, Push Notifications, Testing |
+|--------|------|------------------|
+| Member 1 | Frontend Developer & UI/UX Designer | React UI, PWA, maps, GPS |
+| Member 2 | Backend Developer & Team Lead | Node.js API, auth, coordination |
+| Member 3 | Database Engineer & Notification Specialist | MongoDB, Firebase, push notifications, testing |
 
----
+## Project Structure
 
-## 🗂️ Project Structure
-
-```
+```text
 smart-disaster-coordination/
-├── README.md
-├── package.json
-├── .env.example
-├── .gitignore
-│
-├── docs/                          # Project documentation
-│   ├── Project_Document.docx
-│   ├── Member1_Frontend_UIDesigner.docx
-│   ├── Member2_Backend_TeamLead.docx
-│   └── Member3_Database_Notifications.docx
-│
-├── diagrams/                      # UML & UI diagrams
-│   └── usecase_diagram.jpg
-│
+├── database/
+│   ├── seed.js
+│   └── schemas/
+├── docs/
+├── public/
 ├── src/
-│   ├── frontend/                  # Member 1
-│   │   ├── pages/                 # Screen components
-│   │   ├── components/            # Reusable UI components
-│   │   └── styles/                # CSS / Tailwind config
-│   │
-│   ├── backend/                   # Member 2
-│   │   ├── server.js              # Express server entry point
-│   │   ├── routes/                # API route definitions
-│   │   ├── controllers/           # Business logic
-│   │   ├── middleware/            # Auth & error middleware
-│   │   └── models/                # Mongoose models (shared)
-│   │
-│   ├── notifications/             # Member 3
-│   │   ├── fcmService.js          # Firebase Cloud Messaging
-│   │   └── pushService.js         # PWA Web Push
-│   │
-│   └── database/                  # Member 3
-│       └── schemas/               # MongoDB schema definitions
-│
-├── tests/                         # Member 3 — Jest test suites
-│   ├── auth.test.js
-│   ├── requests.test.js
-│   └── notifications.test.js
-│
-└── public/                        # PWA static assets
-    ├── manifest.json
-    └── service-worker.js
+│   ├── backend/
+│   ├── frontend/
+│   └── notifications/
+├── tests/
+├── .env.example
+├── package.json
+└── README.md
 ```
 
----
-
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Layer | Technology |
-|-------|-----------|
-| Frontend | React.js, Tailwind CSS |
+|-------|------------|
+| Frontend | React.js |
 | Backend | Node.js, Express.js |
-| Database | MongoDB, Mongoose, Firebase Realtime DB |
-| Auth | JWT (JSON Web Tokens) |
-| Maps | Google Maps JavaScript API |
-| Location | Geolocation API |
-| Notifications | Firebase Cloud Messaging (FCM), PWA Web Push |
+| Database | MongoDB, Mongoose, Firebase Realtime Database |
+| Auth | JWT |
+| Notifications | Firebase Cloud Messaging, PWA Web Push |
 | Testing | Jest, Supertest |
-| PWA | Service Worker, Web App Manifest |
 
----
+## Member 3 Deliverables
 
-## 🚀 Getting Started
+- MongoDB schemas for `User`, `HelpRequest`, `NGOProfile`, and `Notification`
+- schema reference in `database/schemas/schemaDefinitions.js`
+- seed data in `database/seed.js`
+- FCM and Web Push notification services
+- notification APIs for fetch/read/read-all/subscribe
+- Firebase Realtime Database live-location sync hook
+- Jest test coverage in:
+  - `tests/auth.test.js`
+  - `tests/requests.test.js`
+  - `tests/notifications.test.js`
+
+## Setup
 
 ### Prerequisites
-- Node.js v18+
-- MongoDB (local or Atlas)
-- Firebase project (for FCM)
-- Google Maps API key
 
-### Installation
+- Node.js 18+
+- MongoDB
+- Firebase project for FCM and Realtime Database
+
+### Install
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-team/smart-disaster-coordination.git
-cd smart-disaster-coordination
-
-# Install backend dependencies
 npm install
-
-# Install frontend dependencies
 cd src/frontend
 npm install
 ```
 
-### Environment Setup
+### Configure
 
 ```bash
 cp .env.example .env
-# Fill in your credentials in .env
 ```
 
-### Run Development Servers
+Fill in MongoDB, JWT, Firebase, and VAPID values.
+
+### Run
 
 ```bash
-# Backend (from root)
+# Backend
 npm run server
 
-# Frontend (from src/frontend)
+# Frontend
+cd src/frontend
 npm start
 ```
 
----
-
-## 👤 User Roles
-
-| Role | Access |
-|------|--------|
-| 🆘 Victim | Submit SOS requests, track status, view map |
-| 🙋 Volunteer | View nearby requests, accept tasks, update status |
-| 🏢 NGO | Manage resources, assign volunteers, coordinate |
-| ⚙️ Admin | Verify NGOs, monitor all activity, prevent duplicates |
-
----
-
-## 📡 API Endpoints
+## Useful Backend Endpoints
 
 | Method | Endpoint | Description | Auth |
 |--------|----------|-------------|------|
-| POST | `/api/auth/register` | Register new user | Public |
-| POST | `/api/auth/login` | Login & get JWT | Public |
+| POST | `/api/auth/register` | Register a user | Public |
+| POST | `/api/auth/login` | Login and get JWT | Public |
+| PUT | `/api/auth/update-location` | Update user location and trigger live sync | Logged-in user |
 | POST | `/api/requests` | Submit SOS request | Victim |
-| GET | `/api/requests/nearby` | Get nearby requests | Volunteer |
+| GET | `/api/requests/nearby` | Get nearby requests | Volunteer, NGO |
 | PUT | `/api/requests/:id/accept` | Accept a request | Volunteer |
-| GET | `/api/admin/ngos` | List all NGOs | Admin |
-| PUT | `/api/admin/ngos/:id/verify` | Approve NGO | Admin |
-| POST | `/api/notifications/broadcast` | Send broadcast | Admin |
+| PUT | `/api/requests/:id/status` | Update request status | Volunteer, NGO, Admin |
+| POST | `/api/ngo/register` | Register NGO profile | NGO |
+| PUT | `/api/admin/ngos/:id/verify` | Approve or reject NGO | Admin |
+| POST | `/api/admin/broadcast` | Broadcast emergency message | Admin |
+| GET | `/api/notifications` | Fetch notifications | Logged-in user |
+| POST | `/api/notifications/subscribe` | Save Web Push subscription | Logged-in user |
 
----
+## Testing
 
-## 📊 Implementation Phases
+Run the Member 3 suites with:
 
-1. **Phase 1** — Requirement Analysis & Design
-2. **Phase 2** — Frontend & Backend Development
-3. **Phase 3** — Integration (APIs + Maps + Firebase)
-4. **Phase 4** — PWA Setup & Notifications
-5. **Phase 5** — Testing
-6. **Phase 6** — Deployment
+```bash
+npx jest tests/auth.test.js tests/requests.test.js tests/notifications.test.js tests/backendRemaining.test.js --runInBand
+```
 
----
+## Notes
 
-## 📄 License
-
-This project is developed for academic purposes.
+- Firebase-based push and live-location sync require Firebase env vars to be set.
+- Web Push requires VAPID keys to be configured.
+- Uploaded NGO documents currently use local storage under `uploads/`.
