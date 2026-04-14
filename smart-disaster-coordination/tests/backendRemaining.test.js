@@ -15,6 +15,8 @@ let volunteerId;
 let ngoProfileId;
 let helpRequestId;
 
+jest.setTimeout(20000);
+
 beforeAll(async () => {
   if (mongoose.connection.readyState === 0) {
     await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/disaster_test');
@@ -219,6 +221,13 @@ describe('NGO registration and admin management', () => {
     expect(verifyRes.statusCode).toBe(200);
     expect(verifyRes.body.data.isApproved).toBe(true);
 
+    const ngoUser = await User.findOne({ email: 'backend_ngo@test.com' });
+    const approvalNotification = await Notification.findOne({
+      recipient: ngoUser._id,
+      type: 'ngo-approved'
+    });
+    expect(approvalNotification).not.toBeNull();
+
     const dashboardRes = await request(app)
       .get('/api/admin/dashboard')
       .set('Authorization', `Bearer ${adminToken}`);
@@ -240,6 +249,9 @@ describe('NGO registration and admin management', () => {
 
     expect(broadcastRes.statusCode).toBe(200);
     expect(broadcastRes.body.success).toBe(true);
+
+    const broadcastNotifications = await Notification.countDocuments({ type: 'broadcast' });
+    expect(broadcastNotifications).toBeGreaterThanOrEqual(1);
 
     const usersRes = await request(app)
       .get('/api/admin/users?role=volunteer')

@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { syncUserLocation } = require('../services/realtimeLocationService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_jwt_secret';
 const ALLOWED_ROLES = ['victim', 'volunteer', 'ngo', 'admin'];
@@ -92,6 +93,14 @@ exports.updateLocation = async (req, res) => {
       { location: { type: 'Point', coordinates: [longitude, latitude] } },
       { new: true }
     ).select('-password');
+
+    await syncUserLocation({
+      userId: user._id,
+      role: user.role,
+      longitude,
+      latitude,
+      source: 'api'
+    });
 
     return res.json({ success: true, message: 'Location updated.', user });
   } catch (err) {

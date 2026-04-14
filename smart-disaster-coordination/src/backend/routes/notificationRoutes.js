@@ -40,6 +40,9 @@ router.put('/read-all', protect, async (req, res) => {
 router.post('/subscribe', protect, async (req, res) => {
   try {
     const { subscription } = req.body;
+    if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) {
+      return res.status(400).json({ success: false, message: 'A valid push subscription is required.' });
+    }
     await saveSubscription(req.user._id, subscription);
     res.json({ success: true, message: 'Push subscription saved.' });
   } catch (err) {

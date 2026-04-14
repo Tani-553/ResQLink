@@ -11,6 +11,7 @@ const volunteerRoutes = require('./routes/volunteerRoutes');
 const ngoRoutes = require('./routes/ngoRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const { syncUserLocation } = require('./services/realtimeLocationService');
 
 const app = express();
 const server = http.createServer(app);
@@ -67,6 +68,16 @@ io.on('connection', (socket) => {
 
   socket.on('volunteer-location-update', (data) => {
     if (!data?.requestId) return;
+    if (data?.userId && Number.isFinite(Number(data?.longitude)) && Number.isFinite(Number(data?.latitude))) {
+      syncUserLocation({
+        userId: data.userId,
+        role: data.role || 'volunteer',
+        longitude: Number(data.longitude),
+        latitude: Number(data.latitude),
+        requestId: data.requestId,
+        source: 'socket'
+      }).catch(() => {});
+    }
     io.to(`request-${data.requestId}`).emit('volunteer-location-update', data);
   });
 

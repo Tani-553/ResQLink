@@ -2,7 +2,8 @@ const User = require('../models/User');
 const NGOProfile = require('../models/NGOProfile');
 const HelpRequest = require('../models/HelpRequest');
 const Notification = require('../models/Notification');
-const { broadcastEmergency } = require('../../notifications/fcmService');
+const { broadcastEmergency, sendToUser } = require('../../notifications/fcmService');
+const { sendWebPush } = require('../../notifications/pushService');
 
 exports.getDashboard = async (req, res) => {
   try {
@@ -65,14 +66,28 @@ exports.verifyNGO = async (req, res) => {
 
     await User.findByIdAndUpdate(ngo.user._id, { isVerified: approved });
 
+    const title = approved ? 'NGO Approved!' : 'NGO Application Rejected';
+    const message = approved
+      ? `Your NGO "${ngo.orgName}" has been approved. You can now access the NGO dashboard.`
+      : `Your NGO "${ngo.orgName}" application was not approved. Please contact admin.`;
+
     await Notification.create({
       recipient: ngo.user._id,
       type: 'ngo-approved',
-      title: approved ? 'NGO Approved!' : 'NGO Application Rejected',
-      message: approved
-        ? `Your NGO "${ngo.orgName}" has been approved. You can now access the NGO dashboard.`
-        : `Your NGO "${ngo.orgName}" application was not approved. Please contact admin.`,
+      title,
+      message,
       triggeredBy: req.user._id
+    });
+
+    await sendToUser(ngo.user._id, {
+      title,
+      body: message,
+      data: { ngoId: ngo._id.toString(), approved: String(approved) }
+    });
+    await sendWebPush(ngo.user._id, {
+      title,
+      body: message,
+      data: { ngoId: ngo._id.toString(), approved }
     });
 
     req.io.emit('ngo-verified', { ngoId: ngo._id, approved });

@@ -1,7 +1,8 @@
-// notifications/pushService.js — Member 3: Notification Specialist
-// PWA Web Push API — browser-level push notifications
+// notifications/pushService.js - Member 3: Notification Specialist
+// PWA Web Push API - browser-level push notifications
 
 const webpush = require('web-push');
+const User = require('../backend/models/User');
 
 const hasVapidKeys = Boolean(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY);
 
@@ -13,19 +14,27 @@ if (hasVapidKeys) {
   );
 }
 
-// In-memory subscription store (use DB in production)
-const subscriptions = new Map(); // userId -> pushSubscription
+// Keep a small hot cache, but persist subscriptions on the user record.
+const subscriptions = new Map();
 
-// Save a user's push subscription
 const saveSubscription = async (userId, subscription) => {
   subscriptions.set(userId.toString(), subscription);
-  console.log(`💾 Push subscription saved for user ${userId}`);
+  await User.findByIdAndUpdate(userId, { webPushSubscription: subscription });
+  console.log(`Push subscription saved for user ${userId}`);
 };
 
-// Send PWA Web Push to a specific user
 const sendWebPush = async (userId, { title, body, icon = '/icons/icon-192.png', data = {} }) => {
   if (!hasVapidKeys) return;
-  const subscription = subscriptions.get(userId.toString());
+
+  let subscription = subscriptions.get(userId.toString());
+  if (!subscription) {
+    const user = await User.findById(userId).select('webPushSubscription');
+    subscription = user?.webPushSubscription || null;
+    if (subscription) {
+      subscriptions.set(userId.toString(), subscription);
+    }
+  }
+
   if (!subscription) return;
 
   const payload = JSON.stringify({
@@ -42,24 +51,22 @@ const sendWebPush = async (userId, { title, body, icon = '/icons/icon-192.png', 
 
   try {
     await webpush.sendNotification(subscription, payload);
-    console.log(`✅ Web Push sent to user ${userId}`);
+    console.log(`Web Push sent to user ${userId}`);
   } catch (err) {
     if (err.statusCode === 410) {
-      // Subscription expired — remove it
       subscriptions.delete(userId.toString());
-      console.log(`🗑️ Expired subscription removed for user ${userId}`);
+      await User.findByIdAndUpdate(userId, { webPushSubscription: null });
+      console.log(`Expired subscription removed for user ${userId}`);
     } else {
-      console.error(`❌ Web Push error for user ${userId}:`, err.message);
+      console.error(`Web Push error for user ${userId}:`, err.message);
     }
   }
 };
 
-// Send to multiple users
 const sendWebPushToMany = async (userIds, payload) => {
-  await Promise.allSettled(userIds.map(id => sendWebPush(id, payload)));
+  await Promise.allSettled(userIds.map((id) => sendWebPush(id, payload)));
 };
 
-// Get VAPID public key (sent to frontend to register service worker)
 const getVapidPublicKey = () => process.env.VAPID_PUBLIC_KEY;
 
 module.exports = { saveSubscription, sendWebPush, sendWebPushToMany, getVapidPublicKey };

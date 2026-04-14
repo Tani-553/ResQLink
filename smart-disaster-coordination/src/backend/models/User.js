@@ -15,6 +15,7 @@ const userSchema = new mongoose.Schema({
   isActive: { type: Boolean, default: true },
   isVerified: { type: Boolean, default: false },
   fcmToken: { type: String },  // For push notifications
+  webPushSubscription: { type: mongoose.Schema.Types.Mixed, default: null },
   createdAt: { type: Date, default: Date.now }
 }, { timestamps: true });
 
