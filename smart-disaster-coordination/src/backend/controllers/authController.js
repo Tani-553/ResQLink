@@ -3,7 +3,7 @@ const User = require('../models/User');
 const { syncUserLocation } = require('../services/realtimeLocationService');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_jwt_secret';
-const ALLOWED_ROLES = ['victim', 'volunteer', 'ngo', 'admin'];
+const ALLOWED_ROLES = ['victim', 'ngo', 'admin'];
 
 const generateToken = (id) =>
   jwt.sign({ id }, JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '7d' });

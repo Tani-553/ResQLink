@@ -1,8 +1,7 @@
-// src/frontend/App.js — Member 1: Frontend Developer
+// src/frontend/App.js - Member 1: Frontend Developer
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
-// Pages
 import LoginPage from './pages/LoginPage';
 import VictimDashboard from './pages/VictimDashboard';
 import VolunteerDashboard from './pages/VolunteerDashboard';
@@ -11,7 +10,6 @@ import AdminDashboard from './pages/AdminDashboard';
 import LiveMapPage from './pages/LiveMapPage';
 import NotificationsPage from './pages/NotificationsPage';
 
-// Components
 import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar';
 import { useAuth } from './components/AuthContext';
@@ -19,13 +17,12 @@ import { useAuth } from './components/AuthContext';
 function App() {
   const { user } = useAuth();
 
-  // Register service worker for PWA
   useEffect(() => {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker
         .register('/service-worker.js')
-        .then(reg => console.log('✅ Service Worker registered:', reg.scope))
-        .catch(err => console.error('❌ Service Worker error:', err));
+        .then((reg) => console.log('Service Worker registered:', reg.scope))
+        .catch((err) => console.error('Service Worker error:', err));
     }
   }, []);
 

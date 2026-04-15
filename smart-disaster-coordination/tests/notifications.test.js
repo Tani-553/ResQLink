@@ -11,12 +11,16 @@ beforeAll(async () => {
     await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/disaster_test');
   }
 
-  const res = await request(app).post('/api/auth/register').send({
+  const user = await User.create({
     name: 'Notif User', email: 'notif_user@test.com',
     phone: '9222222221', password: 'Test@1234', role: 'volunteer'
   });
+  userId = user._id.toString();
+  const res = await request(app).post('/api/auth/login').send({
+    email: 'notif_user@test.com',
+    password: 'Test@1234'
+  });
   userToken = res.body.token;
-  userId = res.body.user.id;
 
   const notif = await Notification.create({
     recipient: userId,

@@ -31,15 +31,19 @@ beforeAll(async () => {
   });
   victimToken = victim.body.token;
 
-  const volunteer = await request(app).post('/api/auth/register').send({
+  const volunteerUser = await User.create({
     name: 'Backend Volunteer',
     email: 'backend_volunteer@test.com',
     phone: '9333333302',
     password: 'Test@1234',
     role: 'volunteer'
   });
+  volunteerId = volunteerUser._id.toString();
+  const volunteer = await request(app).post('/api/auth/login').send({
+    email: 'backend_volunteer@test.com',
+    password: 'Test@1234'
+  });
   volunteerToken = volunteer.body.token;
-  volunteerId = volunteer.body.user.id;
 
   const admin = await request(app).post('/api/auth/register').send({
     name: 'Backend Admin',
@@ -161,32 +165,30 @@ describe('NGO registration and admin management', () => {
     ngoProfileId = res.body.data._id;
   });
 
-  it('returns NGO profile and allows resource updates', async () => {
+  it('returns NGO profile but blocks dashboard actions before approval', async () => {
     const profileRes = await request(app)
       .get('/api/ngo/profile')
       .set('Authorization', `Bearer ${ngoToken}`);
 
     expect(profileRes.statusCode).toBe(200);
     expect(profileRes.body.data.orgName).toBe('Backend Relief Network');
+    expect(profileRes.body.data.documents[0].publicUrl).toBeDefined();
 
     const resourceRes = await request(app)
       .put('/api/ngo/resources')
       .set('Authorization', `Bearer ${ngoToken}`)
       .send({ reliefKits: 120, shelters: 3, vehicles: 5, medicalSupplies: 80 });
 
-    expect(resourceRes.statusCode).toBe(200);
-    expect(resourceRes.body.data.resources.vehicles).toBe(5);
+    expect(resourceRes.statusCode).toBe(403);
   });
 
-  it('lets the NGO assign an active volunteer to a zone', async () => {
+  it('blocks volunteer assignment before approval', async () => {
     const res = await request(app)
       .post('/api/ngo/assign-volunteer')
       .set('Authorization', `Bearer ${ngoToken}`)
       .send({ volunteerId, zone: 'Zone-4' });
 
-    expect(res.statusCode).toBe(200);
-    expect(res.body.data.volunteers.map(String)).toContain(String(volunteerId));
-    expect(res.body.data.activeZones).toContain('Zone-4');
+    expect(res.statusCode).toBe(403);
   });
 
   it('shows active volunteers for NGO and admin roles', async () => {
@@ -235,6 +237,25 @@ describe('NGO registration and admin management', () => {
     expect(dashboardRes.statusCode).toBe(200);
     expect(dashboardRes.body.data.totalRequests).toBeGreaterThanOrEqual(1);
     expect(dashboardRes.body.data.activeNGOs).toBeGreaterThanOrEqual(1);
+  });
+
+  it('unlocks NGO dashboard actions after approval', async () => {
+    const resourceRes = await request(app)
+      .put('/api/ngo/resources')
+      .set('Authorization', `Bearer ${ngoToken}`)
+      .send({ reliefKits: 120, shelters: 3, vehicles: 5, medicalSupplies: 80 });
+
+    expect(resourceRes.statusCode).toBe(200);
+    expect(resourceRes.body.data.resources.vehicles).toBe(5);
+
+    const assignRes = await request(app)
+      .post('/api/ngo/assign-volunteer')
+      .set('Authorization', `Bearer ${ngoToken}`)
+      .send({ volunteerId, zone: 'Zone-4' });
+
+    expect(assignRes.statusCode).toBe(200);
+    expect(assignRes.body.data.volunteers.map((item) => String(item._id || item))).toContain(String(volunteerId));
+    expect(assignRes.body.data.activeZones).toContain('Zone-4');
   });
 
   it('lets admin broadcast and filter users by role', async () => {

@@ -42,13 +42,13 @@ describe('POST /api/auth/register', () => {
     expect(res.body.success).toBe(false);
   });
 
-  it('should register a volunteer user', async () => {
+  it('should reject volunteer as a public signup role', async () => {
     const res = await request(app).post('/api/auth/register').send({
       name: 'Test Volunteer', email: 'volunteer_auth@test.com',
       phone: '9000000098', password: 'Test@1234', role: 'volunteer'
     });
-    expect(res.statusCode).toBe(201);
-    expect(res.body.user.role).toBe('volunteer');
+    expect(res.statusCode).toBe(400);
+    expect(res.body.success).toBe(false);
   });
 });
 
@@ -101,6 +101,14 @@ describe('PUT /api/auth/update-location', () => {
   let volunteerToken;
 
   beforeAll(async () => {
+    await User.create({
+      name: 'Internal Volunteer',
+      email: 'volunteer_auth@test.com',
+      phone: '9000000098',
+      password: 'Test@1234',
+      role: 'volunteer'
+    });
+
     const res = await request(app).post('/api/auth/login').send({
       email: 'volunteer_auth@test.com',
       password: 'Test@1234'

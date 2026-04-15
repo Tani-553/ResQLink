@@ -51,8 +51,16 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
-  const authFetch = (url, options = {}) =>
-    fetch(`${API}${url}`, { ...options, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...(options.headers || {}) } });
+  const authFetch = (url, options = {}) => {
+    const isFormData = options.body instanceof FormData;
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+      ...(options.headers || {})
+    };
+
+    return fetch(`${API}${url}`, { ...options, headers });
+  };
 
   return (
     <AuthContext.Provider value={{ user, token, loading, login, register, logout, authFetch }}>

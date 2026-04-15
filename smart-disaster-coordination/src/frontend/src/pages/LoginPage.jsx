@@ -3,7 +3,6 @@ import { useAuth } from '../components/AuthContext';
 
 const ROLES = [
   { value: 'victim', label: 'Victim', color: '#e11d48' },
-  { value: 'volunteer', label: 'Volunteer', color: '#2563eb' },
   { value: 'ngo', label: 'NGO', color: '#16a34a' },
   { value: 'admin', label: 'Admin', color: '#d97706' }
 ];

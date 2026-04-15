@@ -2,8 +2,20 @@ const User = require('../models/User');
 const NGOProfile = require('../models/NGOProfile');
 const HelpRequest = require('../models/HelpRequest');
 const Notification = require('../models/Notification');
+const path = require('path');
 const { broadcastEmergency, sendToUser } = require('../../notifications/fcmService');
 const { sendWebPush } = require('../../notifications/pushService');
+
+const serializeNGO = (ngo) => {
+  const data = ngo.toObject ? ngo.toObject() : ngo;
+  return {
+    ...data,
+    documents: (data.documents || []).map((document) => ({
+      ...document,
+      publicUrl: document.publicUrl || `/uploads/docs/${path.basename(document.path)}`
+    }))
+  };
+};
 
 exports.getDashboard = async (req, res) => {
   try {
@@ -41,7 +53,7 @@ exports.getNGOs = async (req, res) => {
     const { approved } = req.query;
     const filter = approved !== undefined ? { isApproved: approved === 'true' } : {};
     const ngos = await NGOProfile.find(filter).populate('user', 'name email phone').sort({ createdAt: -1 });
-    return res.json({ success: true, count: ngos.length, data: ngos });
+    return res.json({ success: true, count: ngos.length, data: ngos.map(serializeNGO) });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
   }

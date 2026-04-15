@@ -85,9 +85,12 @@ npm install
 
 ```bash
 cp .env.example .env
+cp src/frontend/.env.example src/frontend/.env
 ```
 
-Fill in MongoDB, JWT, Firebase, and VAPID values.
+Fill in MongoDB, JWT, Firebase, VAPID, and Google Maps values.
+
+Use `src/frontend/.env` for browser-exposed frontend values such as `REACT_APP_API_URL` and `REACT_APP_GOOGLE_MAPS_KEY`.
 
 ### Run
 
@@ -127,6 +130,7 @@ npx jest tests/auth.test.js tests/requests.test.js tests/notifications.test.js t
 
 ## Notes
 
+- The frontend Google Maps page requires `REACT_APP_GOOGLE_MAPS_KEY` in `.env`.
 - Firebase-based push and live-location sync require Firebase env vars to be set.
 - Web Push requires VAPID keys to be configured.
 - Uploaded NGO documents currently use local storage under `uploads/`.

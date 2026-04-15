@@ -1,9 +1,20 @@
 const admin = require('firebase-admin');
 
+const isPlaceholderValue = (value = '') => {
+  const normalized = String(value).trim();
+  return (
+    !normalized ||
+    normalized === 'your_firebase_project_id' ||
+    normalized === 'your_firebase_client_email' ||
+    normalized.includes('YOUR_KEY_HERE') ||
+    normalized === 'https://your-project-default-rtdb.firebaseio.com'
+  );
+};
+
 const hasFirebaseCreds = Boolean(
-  process.env.FIREBASE_PROJECT_ID &&
-  process.env.FIREBASE_PRIVATE_KEY &&
-  process.env.FIREBASE_CLIENT_EMAIL
+  !isPlaceholderValue(process.env.FIREBASE_PROJECT_ID) &&
+  !isPlaceholderValue(process.env.FIREBASE_PRIVATE_KEY) &&
+  !isPlaceholderValue(process.env.FIREBASE_CLIENT_EMAIL)
 );
 
 const initializeFirebase = () => {
@@ -24,7 +35,7 @@ const initializeFirebase = () => {
 
 const syncUserLocation = async ({ userId, role, longitude, latitude, requestId = null, source = 'api' }) => {
   try {
-    if (!initializeFirebase() || !process.env.FIREBASE_DATABASE_URL) {
+    if (!initializeFirebase() || isPlaceholderValue(process.env.FIREBASE_DATABASE_URL)) {
       return false;
     }
 

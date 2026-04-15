@@ -8,10 +8,16 @@ const Notification = require('../src/backend/models/Notification');
 let victimToken, volunteerToken, adminToken;
 let victimId, volunteerId, adminId, requestId;
 
+jest.setTimeout(20000);
+
 beforeAll(async () => {
   if (mongoose.connection.readyState === 0) {
     await mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/disaster_test');
   }
+
+  await Notification.deleteMany({});
+  await HelpRequest.deleteMany({ description: /test request/i });
+  await User.deleteMany({ email: /req_.*@test\.com$/ });
 
   const victim = await request(app).post('/api/auth/register').send({
     name: 'Req Victim', email: 'req_victim@test.com',
@@ -20,12 +26,16 @@ beforeAll(async () => {
   victimToken = victim.body.token;
   victimId = victim.body.user.id;
 
-  const volunteer = await request(app).post('/api/auth/register').send({
+  const volunteerUser = await User.create({
     name: 'Req Volunteer', email: 'req_volunteer@test.com',
     phone: '9111111112', password: 'Test@1234', role: 'volunteer'
   });
+  volunteerId = volunteerUser._id.toString();
+  const volunteer = await request(app).post('/api/auth/login').send({
+    email: 'req_volunteer@test.com',
+    password: 'Test@1234'
+  });
   volunteerToken = volunteer.body.token;
-  volunteerId = volunteer.body.user.id;
 
   const admin = await request(app).post('/api/auth/register').send({
     name: 'Req Admin', email: 'req_admin@test.com',

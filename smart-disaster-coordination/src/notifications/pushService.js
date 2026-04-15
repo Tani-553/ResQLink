@@ -4,14 +4,33 @@
 const webpush = require('web-push');
 const User = require('../backend/models/User');
 
-const hasVapidKeys = Boolean(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY);
-
-if (hasVapidKeys) {
-  webpush.setVapidDetails(
-    process.env.VAPID_MAILTO || 'mailto:admin@disaster-coord.app',
-    process.env.VAPID_PUBLIC_KEY,
-    process.env.VAPID_PRIVATE_KEY
+const rawVapidPublicKey = process.env.VAPID_PUBLIC_KEY;
+const rawVapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
+const isPlaceholderValue = (value = '') => {
+  const normalized = String(value).trim();
+  return (
+    !normalized ||
+    normalized === 'your_vapid_public_key' ||
+    normalized === 'your_vapid_private_key'
   );
+};
+const hasConfiguredVapidKeys = Boolean(
+  !isPlaceholderValue(rawVapidPublicKey) &&
+  !isPlaceholderValue(rawVapidPrivateKey)
+);
+let hasVapidKeys = false;
+
+if (hasConfiguredVapidKeys) {
+  try {
+    webpush.setVapidDetails(
+      process.env.VAPID_MAILTO || 'mailto:admin@disaster-coord.app',
+      rawVapidPublicKey,
+      rawVapidPrivateKey
+    );
+    hasVapidKeys = true;
+  } catch (error) {
+    console.warn(`Web Push disabled: ${error.message}`);
+  }
 }
 
 // Keep a small hot cache, but persist subscriptions on the user record.
@@ -67,6 +86,6 @@ const sendWebPushToMany = async (userIds, payload) => {
   await Promise.allSettled(userIds.map((id) => sendWebPush(id, payload)));
 };
 
-const getVapidPublicKey = () => process.env.VAPID_PUBLIC_KEY;
+const getVapidPublicKey = () => (hasVapidKeys ? rawVapidPublicKey : null);
 
 module.exports = { saveSubscription, sendWebPush, sendWebPushToMany, getVapidPublicKey };
