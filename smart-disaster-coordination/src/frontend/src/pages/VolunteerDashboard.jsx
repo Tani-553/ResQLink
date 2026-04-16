@@ -1,19 +1,22 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useAuth } from '../components/AuthContext';
+import { loadGoogleMaps } from '../utils/loadGoogleMaps';
+
+const mapsApiKey = process.env.REACT_APP_GOOGLE_MAPS_KEY;
 
 const priorityColors = {
-  low: '#22c55e',
-  medium: '#f59e0b',
-  high: '#ef4444',
-  critical: '#8b5cf6'
+  low: '#27AE60',
+  medium: '#F39C12',
+  high: '#C0392B',
+  critical: '#C0392B'
 };
 
 const statusColors = {
-  pending: '#f59e0b',
-  assigned: '#3b82f6',
-  'in-progress': '#8b5cf6',
-  resolved: '#22c55e',
-  cancelled: '#6b7280'
+  pending: '#F39C12',
+  assigned: '#E74C3C',
+  'in-progress': '#C0392B',
+  resolved: '#27AE60',
+  cancelled: '#6B6B85'
 };
 
 const typeLabels = {
@@ -25,8 +28,8 @@ const typeLabels = {
 };
 
 const panelStyle = {
-  background: '#111827',
-  border: '1px solid #1e3a5f',
+  background: '#2A2A3D',
+  border: '1px solid #4A2828',
   borderRadius: '16px',
   padding: '20px'
 };
@@ -42,14 +45,14 @@ const actionButtonStyle = {
 
 const secondaryButtonStyle = {
   ...actionButtonStyle,
-  background: '#1f2937',
-  color: '#cbd5e1',
-  border: '1px solid #334155'
+  background: '#363650',
+  color: '#B0B0C3',
+  border: '1px solid #4A2828'
 };
 
 const primaryButtonStyle = {
   ...actionButtonStyle,
-  background: '#2563eb',
+  background: '#C0392B',
   color: '#fff'
 };
 
@@ -108,11 +111,11 @@ const SummaryCard = ({ label, value, helper, accent }) => (
       minHeight: '118px'
     }}
   >
-    <div style={{ color: '#94a3b8', fontSize: '12px', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+    <div style={{ color: '#B0B0C3', fontSize: '12px', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
       {label}
     </div>
     <div style={{ color: '#fff', fontSize: '28px', fontWeight: 800, marginBottom: '8px' }}>{value}</div>
-    <div style={{ color: '#cbd5e1', fontSize: '13px', lineHeight: 1.5 }}>{helper}</div>
+    <div style={{ color: '#B0B0C3', fontSize: '13px', lineHeight: 1.5 }}>{helper}</div>
   </div>
 );
 
@@ -125,8 +128,8 @@ const EmptyState = ({ title, description }) => (
       borderStyle: 'dashed'
     }}
   >
-    <h3 style={{ color: '#f8fafc', fontSize: '16px', marginTop: 0, marginBottom: '8px' }}>{title}</h3>
-    <p style={{ color: '#94a3b8', fontSize: '13px', lineHeight: 1.6, margin: 0 }}>{description}</p>
+    <h3 style={{ color: '#FFFFFF', fontSize: '16px', marginTop: 0, marginBottom: '8px' }}>{title}</h3>
+    <p style={{ color: '#B0B0C3', fontSize: '13px', lineHeight: 1.6, margin: 0 }}>{description}</p>
   </div>
 );
 
@@ -144,6 +147,41 @@ export default function VolunteerDashboard() {
   const [pageError, setPageError] = useState('');
   const [toast, setToast] = useState('');
   const [lastUpdated, setLastUpdated] = useState({ nearby: null, tasks: null });
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [mapError, setMapError] = useState('');
+  const mapRef = useRef(null);
+
+  const refreshLocation = async () => {
+    setLocationError('');
+    setMapError('');
+    try {
+      const position = await getCurrentPosition();
+      const currentLocation = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude
+      };
+      setLocationState(currentLocation);
+      setToast('Location updated successfully.');
+
+      try {
+        await authFetch('/volunteers/location', {
+          method: 'PUT',
+          body: JSON.stringify({
+            latitude: currentLocation.latitude,
+            longitude: currentLocation.longitude
+          })
+        });
+      } catch (updateErr) {
+        console.warn('Failed to update location on server:', updateErr);
+      }
+    } catch (err) {
+      const fallbackMessage =
+        err.code === 1
+          ? 'Location access is blocked. Enable it to update your location.'
+          : err.message || 'Unable to determine your location.';
+      setLocationError(fallbackMessage);
+    }
+  };
 
   const loadTasks = useCallback(async () => {
     setLoadingTasks(true);
@@ -212,6 +250,135 @@ export default function VolunteerDashboard() {
     const timeoutId = window.setTimeout(() => setToast(''), 3500);
     return () => window.clearTimeout(timeoutId);
   }, [toast]);
+
+  useEffect(() => {
+    if (!mapsApiKey || !locationState) return;
+
+    let cancelled = false;
+
+    const initMap = () => {
+      if (!mapRef.current || !window.google?.maps || !locationState) return;
+      setMapLoaded(false);
+      setMapError('');
+
+      try {
+        const map = new window.google.maps.Map(mapRef.current, {
+          center: { lat: locationState.latitude, lng: locationState.longitude },
+          zoom: 13,
+          styles: [
+            { elementType: 'geometry', stylers: [{ color: '#1a1a2e' }] },
+            { elementType: 'labels.text.stroke', stylers: [{ color: '#1a1a2e' }] },
+            { elementType: 'labels.text.fill', stylers: [{ color: '#e5e7eb' }] },
+            {
+              featureType: 'administrative.locality',
+              elementType: 'labels.text.fill',
+              stylers: [{ color: '#e5e7eb' }]
+            },
+            {
+              featureType: 'poi',
+              elementType: 'labels.text.fill',
+              stylers: [{ color: '#d1d5db' }]
+            },
+            {
+              featureType: 'poi.park',
+              elementType: 'geometry',
+              stylers: [{ color: '#1a1a2e' }]
+            },
+            {
+              featureType: 'poi.park',
+              elementType: 'labels.text.fill',
+              stylers: [{ color: '#6b7280' }]
+            },
+            {
+              featureType: 'road',
+              elementType: 'geometry',
+              stylers: [{ color: '#2d3748' }]
+            },
+            {
+              featureType: 'road',
+              elementType: 'geometry.stroke',
+              stylers: [{ color: '#2d3748' }]
+            },
+            {
+              featureType: 'road',
+              elementType: 'labels.text.fill',
+              stylers: [{ color: '#9ca3af' }]
+            },
+            {
+              featureType: 'road.highway',
+              elementType: 'geometry',
+              stylers: [{ color: '#4a5568' }]
+            },
+            {
+              featureType: 'road.highway',
+              elementType: 'geometry.stroke',
+              stylers: [{ color: '#4a5568' }]
+            },
+            {
+              featureType: 'road.highway',
+              elementType: 'labels.text.fill',
+              stylers: [{ color: '#f3f4f6' }]
+            },
+            {
+              featureType: 'transit',
+              elementType: 'geometry',
+              stylers: [{ color: '#2d3748' }]
+            },
+            {
+              featureType: 'transit.station',
+              elementType: 'labels.text.fill',
+              stylers: [{ color: '#d1d5db' }]
+            },
+            {
+              featureType: 'water',
+              elementType: 'geometry',
+              stylers: [{ color: '#1e293b' }]
+            },
+            {
+              featureType: 'water',
+              elementType: 'labels.text.fill',
+              stylers: [{ color: '#9ca3af' }]
+            }
+          ],
+          disableDefaultUI: true,
+          zoomControl: true,
+          mapTypeControl: false,
+          scaleControl: false,
+          streetViewControl: false,
+          rotateControl: false,
+          fullscreenControl: false
+        });
+
+        new window.google.maps.Marker({
+          position: { lat: locationState.latitude, lng: locationState.longitude },
+          map,
+          title: 'Your Location',
+          icon: {
+            path: window.google.maps.SymbolPath.CIRCLE,
+            scale: 8,
+            fillColor: '#C0392B',
+            fillOpacity: 1,
+            strokeColor: '#fff',
+            strokeWeight: 2
+          }
+        });
+
+        setMapLoaded(true);
+      } catch (err) {
+        setMapError('Failed to initialize map.');
+      }
+    };
+
+    loadGoogleMaps(mapsApiKey)
+      .then(initMap)
+      .catch((err) => {
+        if (!cancelled) setMapError(err.message);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [locationState]);
 
   const taskStats = useMemo(() => {
     const assigned = myTasks.filter((task) => task.status === 'assigned').length;
@@ -291,9 +458,9 @@ export default function VolunteerDashboard() {
         style={{
           padding: '10px 16px',
           borderRadius: '999px',
-          border: active ? '1px solid #3b82f6' : '1px solid #334155',
-          background: active ? '#1d4ed8' : '#0f172a',
-          color: active ? '#fff' : '#cbd5e1',
+          border: active ? '1px solid #E74C3C' : '1px solid #4A2828',
+          background: active ? '#C0392B' : '#1C1C2E',
+          color: active ? '#fff' : '#B0B0C3',
           fontSize: '13px',
           fontWeight: 700,
           cursor: 'pointer'
@@ -306,7 +473,7 @@ export default function VolunteerDashboard() {
 
   const renderNearbyRequest = (request) => {
     const distance = getDistanceKm(locationState, request.location?.coordinates);
-    const priorityColor = priorityColors[request.priority] || '#94a3b8';
+    const priorityColor = priorityColors[request.priority] || '#B0B0C3';
     return (
       <div
         key={request._id}
@@ -338,7 +505,7 @@ export default function VolunteerDashboard() {
                 {request.priority || 'medium'}
               </span>
             </div>
-            <div style={{ color: '#94a3b8', fontSize: '12px' }}>
+            <div style={{ color: '#B0B0C3', fontSize: '12px' }}>
               Reported {formatTimestamp(request.createdAt)}
               {distance ? ` • ${distance} km away` : ''}
             </div>
@@ -357,13 +524,13 @@ export default function VolunteerDashboard() {
           </button>
         </div>
 
-        <p style={{ color: '#e2e8f0', fontSize: '14px', lineHeight: 1.6, marginBottom: '12px' }}>{request.description}</p>
+        <p style={{ color: '#FFFFFF', fontSize: '14px', lineHeight: 1.6, marginBottom: '12px' }}>{request.description}</p>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px' }}>
-          <div style={{ color: '#93c5fd', fontSize: '12px' }}>
+          <div style={{ color: '#E74C3C', fontSize: '12px' }}>
             <strong style={{ color: '#fff' }}>Location:</strong> {request.location?.address || 'Coordinates attached'}
           </div>
-          <div style={{ color: '#cbd5e1', fontSize: '12px' }}>
+          <div style={{ color: '#B0B0C3', fontSize: '12px' }}>
             <strong style={{ color: '#fff' }}>Requester:</strong> {request.victim?.name || 'Unknown'}
             {request.victim?.phone ? ` • ${request.victim.phone}` : ''}
           </div>
@@ -403,17 +570,17 @@ export default function VolunteerDashboard() {
                 {formatStatusLabel(task.status)}
               </span>
             </div>
-            <div style={{ color: '#94a3b8', fontSize: '12px' }}>Assigned from request created {formatTimestamp(task.createdAt)}</div>
+            <div style={{ color: '#B0B0C3', fontSize: '12px' }}>Assigned from request created {formatTimestamp(task.createdAt)}</div>
           </div>
         </div>
 
-        <p style={{ color: '#e2e8f0', fontSize: '14px', lineHeight: 1.6, marginBottom: '12px' }}>{task.description}</p>
+        <p style={{ color: '#FFFFFF', fontSize: '14px', lineHeight: 1.6, marginBottom: '12px' }}>{task.description}</p>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '10px', marginBottom: '14px' }}>
-          <div style={{ color: '#93c5fd', fontSize: '12px' }}>
+          <div style={{ color: '#E74C3C', fontSize: '12px' }}>
             <strong style={{ color: '#fff' }}>Location:</strong> {task.location?.address || 'Coordinates attached'}
           </div>
-          <div style={{ color: '#cbd5e1', fontSize: '12px' }}>
+          <div style={{ color: '#B0B0C3', fontSize: '12px' }}>
             <strong style={{ color: '#fff' }}>Victim:</strong> {task.victim?.name || 'Unknown'}
             {task.victim?.phone ? ` • ${task.victim.phone}` : ''}
           </div>
@@ -607,6 +774,56 @@ export default function VolunteerDashboard() {
                 Mark a task resolved only after the victim has received help or been handed off safely.
               </div>
             </div>
+          </div>
+
+          <div style={panelStyle}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <h3 style={{ color: '#fff', fontSize: '16px', margin: 0 }}>Your Location</h3>
+              <button
+                type="button"
+                onClick={refreshLocation}
+                style={{
+                  ...secondaryButtonStyle,
+                  padding: '6px 12px',
+                  fontSize: '12px'
+                }}
+              >
+                Refresh
+              </button>
+            </div>
+            {locationError && (
+              <div style={{ color: '#fdba74', fontSize: '12px', marginBottom: '8px' }}>
+                {locationError}
+              </div>
+            )}
+            {mapError && (
+              <div style={{ color: '#fecaca', fontSize: '12px', marginBottom: '8px' }}>
+                {mapError}
+              </div>
+            )}
+            <div style={{ position: 'relative', height: '200px', width: '100%', borderRadius: '8px', background: '#1a1a2e' }}>
+              <div ref={mapRef} style={{ height: '100%', width: '100%', borderRadius: '8px' }} />
+              {!locationState && !locationError && (
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '13px', background: 'rgba(26, 26, 46, 0.75)', borderRadius: '8px' }}>
+                  Getting your location...
+                </div>
+              )}
+              {locationState && !mapLoaded && !mapError && (
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '13px', background: 'rgba(26, 26, 46, 0.75)', borderRadius: '8px' }}>
+                  Loading map...
+                </div>
+              )}
+              {mapError && (
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fecaca', fontSize: '13px', background: 'rgba(26, 26, 46, 0.85)', borderRadius: '8px' }}>
+                  Unable to load map
+                </div>
+              )}
+            </div>
+            {locationState && (
+              <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '8px', textAlign: 'center' }}>
+                Lat: {locationState.latitude.toFixed(4)}, Lng: {locationState.longitude.toFixed(4)}
+              </div>
+            )}
           </div>
         </div>
       </div>

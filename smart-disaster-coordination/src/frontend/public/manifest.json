@@ -1,7 +1,7 @@
 {
-  "name": "Smart Disaster Resource Coordination System",
-  "short_name": "DisasterCoord",
-  "description": "Real-time disaster coordination platform for victims, volunteers, NGOs and admins",
+  "name": "ResQLink",
+  "short_name": "ResQLink",
+  "description": "Real-time rescue coordination platform for victims, volunteers, NGOs and admins",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",

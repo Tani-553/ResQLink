@@ -16,21 +16,21 @@ export default function Navbar() {
   const links = roleLinks[user?.role] || [];
 
   return (
-    <nav style={{ background: '#111827', borderBottom: '1px solid #1e3a5f', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '56px', position: 'sticky', top: 0, zIndex: 100 }}>
+    <nav style={{ background: '#2A2A3D', borderBottom: '1px solid #4A2828', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '56px', position: 'sticky', top: 0, zIndex: 100 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-        <span style={{ color: '#fff', fontWeight: 800, fontSize: '15px' }}>🛡️ DisasterCoord</span>
+        <span style={{ color: '#E74C3C', fontWeight: 800, fontSize: '15px' }}>🛡️ ResQLink</span>
         {links.map(l => (
-          <Link key={l.path} to={l.path} style={{ color: location.pathname === l.path ? '#60a5fa' : '#9ca3af', textDecoration: 'none', fontSize: '13px', fontWeight: 600 }}>
+          <Link key={l.path} to={l.path} style={{ color: location.pathname === l.path ? '#E74C3C' : '#B0B0C3', textDecoration: 'none', fontSize: '13px', fontWeight: 600 }}>
             {l.label}
           </Link>
         ))}
-        <Link to="/notifications" style={{ color: location.pathname === '/notifications' ? '#60a5fa' : '#9ca3af', textDecoration: 'none', fontSize: '13px', fontWeight: 600 }}>
+        <Link to="/notifications" style={{ color: location.pathname === '/notifications' ? '#E74C3C' : '#B0B0C3', textDecoration: 'none', fontSize: '13px', fontWeight: 600 }}>
           🔔 Alerts
         </Link>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
         <span style={{ color: '#6b7280', fontSize: '12px' }}>{user?.name} · {user?.role}</span>
-        <button onClick={logout} style={{ background: '#1f2937', border: '1px solid #374151', color: '#9ca3af', padding: '6px 14px', borderRadius: '8px', fontSize: '12px', cursor: 'pointer' }}>
+        <button onClick={logout} style={{ background: '#363650', border: '1px solid #4A2828', color: '#B0B0C3', padding: '6px 14px', borderRadius: '8px', fontSize: '12px', cursor: 'pointer' }}>
           ↩ Logout
         </button>
       </div>

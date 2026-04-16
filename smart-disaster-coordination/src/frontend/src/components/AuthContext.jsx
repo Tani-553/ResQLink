@@ -1,5 +1,5 @@
 // src/frontend/components/AuthContext.jsx — Member 1: Frontend Developer
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 const AuthContext = createContext(null);
 const API = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
@@ -51,7 +51,7 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
-  const authFetch = (url, options = {}) => {
+  const authFetch = useCallback((url, options = {}) => {
     const isFormData = options.body instanceof FormData;
     const headers = {
       Authorization: `Bearer ${token}`,
@@ -60,7 +60,7 @@ export function AuthProvider({ children }) {
     };
 
     return fetch(`${API}${url}`, { ...options, headers });
-  };
+  }, [token]);
 
   return (
     <AuthContext.Provider value={{ user, token, loading, login, register, logout, authFetch }}>

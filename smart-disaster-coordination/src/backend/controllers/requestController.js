@@ -153,6 +153,8 @@ exports.acceptRequest = async (req, res) => {
 
     helpRequest.assignedVolunteer = req.user._id;
     helpRequest.status = 'assigned';
+    helpRequest.volunteerResolved = false;
+    helpRequest.victimResolved = false;
     await helpRequest.save();
 
     emitRequestEvent(req, 'request-status-update', {
@@ -186,8 +188,20 @@ exports.updateStatus = async (req, res) => {
       return res.status(403).json({ success: false, message: 'You can only update requests assigned to you.' });
     }
 
+    if (status === 'resolved' && isVolunteer) {
+      return res.status(400).json({ success: false, message: 'Volunteers must use the resolve confirmation endpoint.' });
+    }
+
     helpRequest.status = status;
-    helpRequest.resolvedAt = status === 'resolved' ? new Date() : undefined;
+    if (status === 'resolved') {
+      helpRequest.resolvedAt = new Date();
+      helpRequest.volunteerResolved = true;
+      helpRequest.victimResolved = true;
+    } else {
+      helpRequest.resolvedAt = undefined;
+      helpRequest.volunteerResolved = false;
+      helpRequest.victimResolved = false;
+    }
     await helpRequest.save();
 
     emitRequestEvent(req, 'request-status-update', {
@@ -236,6 +250,113 @@ exports.updateStatus = async (req, res) => {
     await Notification.insertMany(notifications);
     await sendToMany(pushRecipients, { title, body: message, data: { requestId, status } });
     await sendWebPushToMany(pushRecipients, { title, body: message, data: { requestId, status } });
+
+    return res.json({ success: true, data: helpRequest });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.confirmResolution = async (req, res) => {
+  try {
+    const { confirmed } = req.body;
+    if (typeof confirmed !== 'boolean') {
+      return res.status(400).json({ success: false, message: 'Confirmed must be a boolean.' });
+    }
+
+    const helpRequest = await HelpRequest.findById(req.params.id)
+      .populate('assignedVolunteer', 'name')
+      .populate('victim', 'name');
+    if (!helpRequest) {
+      return res.status(404).json({ success: false, message: 'Request not found.' });
+    }
+
+    if (!helpRequest.assignedVolunteer) {
+      return res.status(400).json({ success: false, message: 'Cannot confirm resolution before a volunteer is assigned.' });
+    }
+
+    const isVolunteer = req.user.role === 'volunteer';
+    const isVictim = req.user.role === 'victim';
+    if (isVolunteer) {
+      if (helpRequest.assignedVolunteer._id.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ success: false, message: 'You can only update requests assigned to you.' });
+      }
+      helpRequest.volunteerResolved = confirmed;
+    } else if (isVictim) {
+      if (helpRequest.victim.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ success: false, message: 'You can only update your own request.' });
+      }
+      helpRequest.victimResolved = confirmed;
+    } else {
+      return res.status(403).json({ success: false, message: 'Only volunteers and victims may confirm resolution.' });
+    }
+
+    const wasResolved = helpRequest.status === 'resolved';
+    const bothConfirmed = helpRequest.volunteerResolved && helpRequest.victimResolved;
+
+    if (bothConfirmed) {
+      helpRequest.status = 'resolved';
+      helpRequest.resolvedAt = new Date();
+    } else if (wasResolved && !bothConfirmed) {
+      helpRequest.status = 'in-progress';
+      helpRequest.resolvedAt = undefined;
+    }
+
+    await helpRequest.save();
+
+    const requestId = helpRequest._id.toString();
+    const confirmationActor = isVolunteer ? 'Volunteer' : 'Victim';
+    const title = bothConfirmed ? 'Request Resolved' : confirmed ? `${confirmationActor} Confirmed Resolve` : `${confirmationActor} Marked Unresolved`;
+    const bodyMessage = bothConfirmed
+      ? 'Both volunteer and victim have confirmed the request is resolved.'
+      : confirmed
+      ? `${confirmationActor} confirmed the request is resolved. Waiting on the other party.`
+      : `${confirmationActor} marked the request as unresolved.`;
+
+    const notifications = [];
+    const pushRecipients = [];
+
+    const payload = {
+      requestId,
+      status: helpRequest.status,
+      volunteerResolved: helpRequest.volunteerResolved,
+      victimResolved: helpRequest.victimResolved
+    };
+
+    notifications.push({
+      recipient: helpRequest.victim,
+      type: bothConfirmed ? 'request-resolved' : 'task-update',
+      title,
+      message: bodyMessage,
+      data: { ...payload, confirmedBy: req.user.role },
+      triggeredBy: req.user._id
+    });
+    pushRecipients.push(helpRequest.victim);
+
+    notifications.push({
+      recipient: helpRequest.assignedVolunteer._id,
+      type: bothConfirmed ? 'request-resolved' : 'task-update',
+      title,
+      message: bodyMessage,
+      data: { ...payload, confirmedBy: req.user.role },
+      triggeredBy: req.user._id
+    });
+    pushRecipients.push(helpRequest.assignedVolunteer._id);
+
+    const admins = await User.find({ role: 'admin', isActive: true }).select('_id');
+    notifications.push(...admins.map((admin) => ({
+      recipient: admin._id,
+      type: bothConfirmed ? 'request-resolved' : 'task-update',
+      title,
+      message: bodyMessage,
+      data: payload,
+      triggeredBy: req.user._id
+    })));
+    pushRecipients.push(...admins.map((admin) => admin._id));
+
+    await Notification.insertMany(notifications);
+    await sendToMany(pushRecipients, { title, body: bodyMessage, data: payload });
+    await sendWebPushToMany(pushRecipients, { title, body: bodyMessage, data: payload });
 
     return res.json({ success: true, data: helpRequest });
   } catch (err) {

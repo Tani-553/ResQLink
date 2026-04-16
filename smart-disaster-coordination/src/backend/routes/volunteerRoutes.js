@@ -32,4 +32,25 @@ router.get('/my-tasks', protect, authorize('volunteer'), async (req, res) => {
   }
 });
 
+router.put('/location', protect, authorize('volunteer'), async (req, res) => {
+  try {
+    const { latitude, longitude } = req.body;
+
+    if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+      return res.status(400).json({ success: false, message: 'Invalid location coordinates.' });
+    }
+
+    await User.findByIdAndUpdate(req.user._id, {
+      location: {
+        type: 'Point',
+        coordinates: [longitude, latitude]
+      }
+    });
+
+    return res.json({ success: true, message: 'Location updated successfully.' });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 module.exports = router;

@@ -3,6 +3,7 @@ import { useAuth } from '../components/AuthContext';
 
 const ROLES = [
   { value: 'victim', label: 'Victim', color: '#e11d48' },
+  { value: 'volunteer', label: 'Volunteer', color: '#2563eb' },
   { value: 'ngo', label: 'NGO', color: '#16a34a' },
   { value: 'admin', label: 'Admin', color: '#d97706' }
 ];
@@ -58,7 +59,7 @@ export default function LoginPage() {
   return (
     <div style={styles.page}>
       <div style={styles.card}>
-        <h1 style={styles.title}>Smart Disaster Coordination</h1>
+        <h1 style={styles.title}>🛡️ ResQLink</h1>
         <p style={styles.subtitle}>
           {isRegister ? 'Create a new account' : 'Sign in to continue'}
         </p>
@@ -124,10 +125,10 @@ export default function LoginPage() {
                       border:
                         form.role === role.value
                           ? `2px solid ${role.color}`
-                          : '1px solid #334155',
+                          : '1px solid #4A2828',
                       background:
-                        form.role === role.value ? '#0f172a' : '#111827',
-                      color: form.role === role.value ? role.color : '#cbd5e1'
+                        form.role === role.value ? '#363650' : '#2A2A3D',
+                      color: form.role === role.value ? role.color : '#B0B0C3'
                     }}
                   >
                     {role.label}
@@ -137,7 +138,7 @@ export default function LoginPage() {
             </div>
           )}
 
-          <button type="submit" disabled={loading} style={styles.submitButton}>
+          <button type="submit" disabled={loading} style={styles.submitButton} className="resqlink-button">
             {loading
               ? 'Please wait...'
               : isRegister
@@ -169,26 +170,26 @@ const styles = {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    background: '#020617',
+    background: '#1C1C2E',
     padding: '24px'
   },
   card: {
     width: '100%',
     maxWidth: '420px',
-    background: '#0f172a',
-    border: '1px solid #1e293b',
+    background: '#2A2A3D',
+    border: '1px solid #4A2828',
     borderRadius: '16px',
     padding: '32px',
     boxShadow: '0 20px 60px rgba(0,0,0,0.35)'
   },
   title: {
-    color: '#f8fafc',
+    color: '#ffffff',
     fontSize: '28px',
     marginBottom: '8px',
     textAlign: 'center'
   },
   subtitle: {
-    color: '#94a3b8',
+    color: '#B0B0C3',
     fontSize: '14px',
     textAlign: 'center',
     marginBottom: '24px'
@@ -207,9 +208,9 @@ const styles = {
     padding: '12px 14px',
     marginBottom: '12px',
     borderRadius: '10px',
-    border: '1px solid #334155',
-    background: '#111827',
-    color: '#f8fafc',
+    border: '1px solid #4A2828',
+    background: '#363650',
+    color: '#ffffff',
     fontSize: '14px',
     outline: 'none',
     boxSizing: 'border-box'
@@ -236,20 +237,20 @@ const styles = {
     padding: '12px',
     border: 'none',
     borderRadius: '10px',
-    background: '#2563eb',
+    background: '#C0392B',
     color: '#ffffff',
     fontWeight: '700',
     fontSize: '14px',
     cursor: 'pointer'
   },
   toggleText: {
-    color: '#94a3b8',
+    color: '#B0B0C3',
     fontSize: '14px',
     textAlign: 'center',
     marginTop: '18px'
   },
   toggleLink: {
-    color: '#60a5fa',
+    color: '#E74C3C',
     cursor: 'pointer',
     textDecoration: 'underline'
   }

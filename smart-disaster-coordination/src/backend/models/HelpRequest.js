@@ -21,6 +21,8 @@ const helpRequestSchema = new mongoose.Schema({
   priority: { type: String, enum: ['low', 'medium', 'high', 'critical'], default: 'medium' },
   isDuplicate: { type: Boolean, default: false },
   resolvedAt: { type: Date },
+  volunteerResolved: { type: Boolean, default: false },
+  victimResolved: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now }
 }, { timestamps: true });
 

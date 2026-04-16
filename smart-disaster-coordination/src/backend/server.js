@@ -25,7 +25,19 @@ if (process.env.NODE_ENV !== 'test') {
   connectDB();
 }
 
-app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:3000' }));
+const clientUrl = process.env.CLIENT_URL || 'http://localhost:3000';
+const allowedOrigins = [clientUrl, 'http://localhost:3001', 'http://172.26.128.1:3001'];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error(`CORS policy blocked origin: ${origin}`));
+    }
+  })
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
@@ -43,7 +55,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', notificationRoutes);
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Disaster Coordination API running', timestamp: new Date() });
+  res.json({ status: 'OK', message: 'ResQLink API running', timestamp: new Date() });
 });
 
 io.on('connection', (socket) => {

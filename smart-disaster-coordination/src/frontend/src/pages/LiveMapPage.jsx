@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../components/AuthContext';
+import { loadGoogleMaps } from '../utils/loadGoogleMaps';
 
 const typeColors = {
   rescue: '#ef4444',
@@ -68,31 +69,14 @@ export default function LiveMapPage() {
         return;
       }
 
-      const existingScript = document.querySelector('script[data-google-maps="true"]');
-
-      window.initMap = async () => {
-        if (!cancelled) {
-          await initMap();
-        }
-      };
-
-      if (!existingScript) {
-        const script = document.createElement('script');
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${mapsApiKey}&callback=initMap`;
-        script.async = true;
-        script.defer = true;
-        script.dataset.googleMaps = 'true';
-        document.head.appendChild(script);
-      }
+      await loadGoogleMaps(mapsApiKey);
+      await initMap();
     };
 
     loadMap();
 
     return () => {
       cancelled = true;
-      if (window.initMap) {
-        delete window.initMap;
-      }
     };
   }, [authFetch]);
 
