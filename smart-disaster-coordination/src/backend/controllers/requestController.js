@@ -183,20 +183,40 @@ exports.updateStatus = async (req, res) => {
     }
 
     const isVolunteer = req.user.role === 'volunteer';
+    const isVictim = req.user.role === 'victim';
+    const isAdmin = req.user.role === 'admin';
+    const isNGO = req.user.role === 'ngo';
     const assignedVolunteerId = helpRequest.assignedVolunteer?.toString();
-    if (isVolunteer && assignedVolunteerId !== req.user._id.toString()) {
+    const userId = req.user._id.toString();
+    const victimId = helpRequest.victim?.toString();
+
+    // Authorization checks
+    if (isVolunteer && assignedVolunteerId !== userId) {
       return res.status(403).json({ success: false, message: 'You can only update requests assigned to you.' });
     }
 
-    if (status === 'resolved' && isVolunteer) {
-      return res.status(400).json({ success: false, message: 'Volunteers must use the resolve confirmation endpoint.' });
+    if (isVictim && victimId !== userId) {
+      return res.status(403).json({ success: false, message: 'You can only update your own requests.' });
+    }
+
+    // Allow resolved status only for victims and assigned volunteers
+    if (status === 'resolved' && !isVictim && !isVolunteer && !isAdmin && !isNGO) {
+      return res.status(403).json({ success: false, message: 'You do not have permission to resolve this request.' });
     }
 
     helpRequest.status = status;
     if (status === 'resolved') {
       helpRequest.resolvedAt = new Date();
-      helpRequest.volunteerResolved = true;
-      helpRequest.victimResolved = true;
+      // If victim or volunteer marks as resolved, set their flag
+      if (isVictim) {
+        helpRequest.victimResolved = true;
+      } else if (isVolunteer) {
+        helpRequest.volunteerResolved = true;
+      } else {
+        // Admin or NGO - set both
+        helpRequest.volunteerResolved = true;
+        helpRequest.victimResolved = true;
+      }
     } else {
       helpRequest.resolvedAt = undefined;
       helpRequest.volunteerResolved = false;
@@ -211,12 +231,13 @@ exports.updateStatus = async (req, res) => {
 
     const requestId = helpRequest._id.toString();
     const title = status === 'resolved' ? 'Request Resolved' : 'Request Status Updated';
-    const message = `Your request is now marked as "${status}".`;
+    const messageByVictim = isVictim ? `Your request has been marked as resolved. Thank you!` : `Your request is now marked as "${status}".`;
+    const message = messageByVictim;
     const notifications = [{
       recipient: helpRequest.victim,
       type: status === 'resolved' ? 'request-resolved' : 'task-update',
       title,
-      message,
+      message: isVictim ? `Your request has been marked as resolved. Thank you!` : message,
       data: { requestId, status },
       triggeredBy: req.user._id
     }];
@@ -227,7 +248,7 @@ exports.updateStatus = async (req, res) => {
         recipient: helpRequest.assignedVolunteer,
         type: 'request-resolved',
         title,
-        message: 'The request assigned to you has been marked as "resolved".',
+        message: isVolunteer ? `You have marked your task as resolved.` : `Request #${requestId.substring(0, 8)} has been resolved successfully`,
         data: { requestId, status },
         triggeredBy: req.user._id
       });

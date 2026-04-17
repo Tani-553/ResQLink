@@ -2,9 +2,10 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
+import LanguageSwitcher from './LanguageSwitcher';
 
 const roleLinks = {
-  victim:    [{ path: '/victim',        label: '🏠 Home' }, { path: '/map', label: '🗺️ Map' }],
+  victim:    [{ path: '/victim',        label: '🏠 Home' }, { path: '/map', label: '🗺️ Map' }, { path: '/community', label: '🤝 Community' }],
   volunteer: [{ path: '/volunteer',     label: '🏠 Tasks' }, { path: '/map', label: '🗺️ Map' }],
   ngo:       [{ path: '/ngo',           label: '🏠 Panel' }, { path: '/map', label: '🗺️ Map' }],
   admin:     [{ path: '/admin',         label: '🏠 Control' }, { path: '/map', label: '🗺️ Map' }],
@@ -29,6 +30,7 @@ export default function Navbar() {
         </Link>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <LanguageSwitcher />
         <span style={{ color: '#6b7280', fontSize: '12px' }}>{user?.name} · {user?.role}</span>
         <button onClick={logout} style={{ background: '#363650', border: '1px solid #4A2828', color: '#B0B0C3', padding: '6px 14px', borderRadius: '8px', fontSize: '12px', cursor: 'pointer' }}>
           ↩ Logout

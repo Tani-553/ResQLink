@@ -15,6 +15,6 @@ router.get('/nearby', protect, authorize('volunteer', 'ngo'), getNearbyRequests)
 router.get('/my', protect, authorize('victim'), getMyRequests);
 router.get('/all', protect, authorize('admin'), getAllRequests);
 router.put('/:id/accept', protect, authorize('volunteer'), acceptRequest);
-router.put('/:id/status', protect, authorize('volunteer', 'ngo', 'admin'), updateStatus);
+router.put('/:id/status', protect, authorize('victim', 'volunteer', 'ngo', 'admin'), updateStatus);
 
 module.exports = router;

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useAuth } from '../components/AuthContext';
+import { useLang } from '../components/LanguageContext';
 import { loadGoogleMaps } from '../utils/loadGoogleMaps';
 
 const mapsApiKey = process.env.REACT_APP_GOOGLE_MAPS_KEY;
@@ -135,9 +136,11 @@ const EmptyState = ({ title, description }) => (
 
 export default function VolunteerDashboard() {
   const { authFetch, user } = useAuth();
+  const { t } = useLang();
   const [tab, setTab] = useState('nearby');
   const [requests, setRequests] = useState([]);
   const [myTasks, setMyTasks] = useState([]);
+  const [completedTasks, setCompletedTasks] = useState([]);
   const [loadingNearby, setLoadingNearby] = useState(false);
   const [loadingTasks, setLoadingTasks] = useState(false);
   const [acceptingId, setAcceptingId] = useState('');
@@ -148,6 +151,7 @@ export default function VolunteerDashboard() {
   const [toast, setToast] = useState('');
   const [lastUpdated, setLastUpdated] = useState({ nearby: null, tasks: null });
   const [mapLoaded, setMapLoaded] = useState(false);
+  const [contactModal, setContactModal] = useState({ show: false, victim: null, taskId: null });
   const [mapError, setMapError] = useState('');
   const mapRef = useRef(null);
 
@@ -195,7 +199,9 @@ export default function VolunteerDashboard() {
         throw new Error(data.message || 'Unable to load assigned tasks.');
       }
 
-      setMyTasks(data.data || []);
+      const allTasks = data.data || [];
+      setMyTasks(allTasks.filter(t => t.status !== 'resolved'));
+      setCompletedTasks(allTasks.filter(t => t.status === 'resolved'));
       setLastUpdated((prev) => ({ ...prev, tasks: new Date().toISOString() }));
     } catch (err) {
       setPageError(err.message || 'Unable to load assigned tasks.');
@@ -435,12 +441,18 @@ export default function VolunteerDashboard() {
         throw new Error(data.message || 'Unable to update task status.');
       }
 
-      setMyTasks((prev) =>
-        status === 'resolved'
-          ? prev.filter((task) => task._id !== requestId)
-          : prev.map((task) => (task._id === requestId ? { ...task, status } : task))
-      );
-      setToast(status === 'resolved' ? 'Task marked as resolved.' : 'Task status updated.');
+      if (status === 'resolved') {
+        setMyTasks((prev) => prev.filter((task) => task._id !== requestId));
+        setCompletedTasks((prev) => {
+          const task = myTasks.find(t => t._id === requestId);
+          return task ? [{ ...task, status: 'resolved' }, ...prev] : prev;
+        });
+      } else {
+        setMyTasks((prev) =>
+          prev.map((task) => (task._id === requestId ? { ...task, status } : task))
+        );
+      }
+      setToast(status === 'resolved' ? '✅ Task marked as resolved.' : '🚀 Task status updated.');
       setLastUpdated((prev) => ({ ...prev, tasks: new Date().toISOString() }));
     } catch (err) {
       setPageError(err.message || 'Unable to update task status.');
@@ -594,7 +606,7 @@ export default function VolunteerDashboard() {
               disabled={updatingId === task._id}
               style={{ ...primaryButtonStyle, opacity: updatingId === task._id ? 0.75 : 1 }}
             >
-              {updatingId === task._id ? 'Updating...' : 'Start Task'}
+              {updatingId === task._id ? 'Updating...' : '🚀 Start Task'}
             </button>
           )}
 
@@ -605,15 +617,27 @@ export default function VolunteerDashboard() {
               disabled={updatingId === task._id}
               style={{
                 ...actionButtonStyle,
-                background: '#14532d',
-                color: '#86efac',
-                border: '1px solid #22c55e',
+                background: '#27AE60',
+                color: '#fff',
+                border: 'none',
                 opacity: updatingId === task._id ? 0.75 : 1
               }}
             >
-              {updatingId === task._id ? 'Updating...' : 'Mark Resolved'}
+              {updatingId === task._id ? 'Updating...' : '✅ Mark Task Resolved'}
             </button>
           )}
+          {task.status === 'resolved' && (
+            <span style={{ ...actionButtonStyle, background: '#6B6B85', color: '#B0B0C3', cursor: 'default' }}>
+              ✔ Completed
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => setContactModal({ show: true, victim: task.victim, taskId: task._id })}
+            style={{ ...secondaryButtonStyle }}
+          >
+            📞 Contact Victim
+          </button>
         </div>
       </div>
     );
@@ -624,7 +648,7 @@ export default function VolunteerDashboard() {
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', alignItems: 'flex-start', marginBottom: '22px', flexWrap: 'wrap' }}>
         <div>
           <h2 style={{ color: '#fff', fontSize: '28px', fontWeight: 800, margin: '0 0 8px' }}>
-            Volunteer Dashboard
+            {t('volunteer')} {t('dashboard')}
           </h2>
           <p style={{ color: '#94a3b8', fontSize: '14px', lineHeight: 1.6, margin: 0 }}>
             Welcome back{user?.name ? `, ${user.name}` : ''}. Review urgent requests nearby, accept work, and keep your active tasks moving.
@@ -633,10 +657,10 @@ export default function VolunteerDashboard() {
 
         <div style={{ ...panelStyle, padding: '16px', minWidth: '280px' }}>
           <div style={{ color: '#94a3b8', fontSize: '12px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-            Field Status
+            {t('fieldStatus')}
           </div>
           <div style={{ color: '#fff', fontSize: '14px', lineHeight: 1.7 }}>
-            {locationState ? 'Location synced for nearby request matching.' : 'Location not synced yet.'}
+            {locationState ? t('locationSynced') : t('locationNotSynced')}
           </div>
           <div style={{ color: '#94a3b8', fontSize: '12px', marginTop: '8px' }}>
             Nearby updated {lastUpdated.nearby ? formatTimestamp(lastUpdated.nearby) : 'not yet'} • Tasks updated {lastUpdated.tasks ? formatTimestamp(lastUpdated.tasks) : 'not yet'}
@@ -664,27 +688,27 @@ export default function VolunteerDashboard() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', marginBottom: '22px' }}>
         <SummaryCard
-          label="Nearby Requests"
+          label={t('nearbyRequests')}
           value={taskStats.openNearby}
-          helper="Open help requests within the current 15 km search radius."
+          helper={t('openHelpRequests')}
           accent="#3b82f6"
         />
         <SummaryCard
-          label="Critical Nearby"
+          label={t('criticalNearby')}
           value={taskStats.criticalNearby}
-          helper="Highest-priority requests that may need immediate attention."
+          helper={t('highestPriorityRequests')}
           accent="#8b5cf6"
         />
         <SummaryCard
-          label="Ready To Start"
+          label={t('readyToStart')}
           value={taskStats.assigned}
-          helper="Accepted tasks that are assigned and waiting for movement."
+          helper={t('acceptedTasksWaiting')}
           accent="#f59e0b"
         />
         <SummaryCard
-          label="In Progress"
+          label={t('inProgress')}
           value={taskStats.inProgress}
-          helper="Tasks you are actively working through in the field."
+          helper={t('activelyWorkingTasks')}
           accent="#22c55e"
         />
       </div>
@@ -693,16 +717,16 @@ export default function VolunteerDashboard() {
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              <TabButton value="nearby" label="Nearby Requests" count={requests.length} />
-              <TabButton value="tasks" label="My Tasks" count={myTasks.length} />
+              <TabButton value="nearby" label={t('nearbyRequests')} count={requests.length} />
+              <TabButton value="tasks" label={t('myTasks')} count={myTasks.length} />
             </div>
 
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
               <button type="button" onClick={loadNearbyRequests} style={secondaryButtonStyle}>
-                {loadingNearby ? 'Refreshing Nearby...' : 'Refresh Nearby'}
+                {loadingNearby ? t('refreshingNearby') : t('refreshNearby')}
               </button>
               <button type="button" onClick={loadTasks} style={secondaryButtonStyle}>
-                {loadingTasks ? 'Refreshing Tasks...' : 'Refresh Tasks'}
+                {loadingTasks ? t('refreshingTasks') : t('refreshTasks')}
               </button>
             </div>
           </div>
@@ -711,8 +735,8 @@ export default function VolunteerDashboard() {
             <>
               {!loadingNearby && requests.length === 0 && (
                 <EmptyState
-                  title="No nearby requests right now"
-                  description="You are all caught up in your area. Refresh again in a moment or keep an eye on the live map for new activity."
+                  title={t('noNearbyRequests')}
+                  description={t('catchUpArea')}
                 />
               )}
               {requests.map(renderNearbyRequest)}
@@ -728,6 +752,33 @@ export default function VolunteerDashboard() {
                 />
               )}
               {myTasks.map(renderTask)}
+              
+              {completedTasks.length > 0 && (
+                <>
+                  <h3 style={{ color: '#27AE60', fontSize: '15px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', marginTop: '32px', marginBottom: '12px' }}>
+                    ✔ Completed Tasks
+                  </h3>
+                  <div style={{ opacity: 0.5 }}>
+                    {completedTasks.map(task => (
+                      <div key={task._id} style={{ ...panelStyle, marginBottom: '14px', borderColor: '#27AE60' + '44' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px' }}>
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                              <span style={{ color: '#fff', fontSize: '15px', fontWeight: 700 }}>
+                                {typeLabels[task.type] || task.type}
+                              </span>
+                              <span style={{ background: '#27AE60' + '22', color: '#27AE60', border: '1px solid #27AE60', borderRadius: '999px', padding: '4px 10px', fontSize: '11px', fontWeight: 700 }}>
+                                ✔ Resolved
+                              </span>
+                            </div>
+                            <div style={{ color: '#B0B0C3', fontSize: '12px' }}>Resolved at {formatTimestamp(task.resolvedAt)}  •  {task.victim?.name || 'Unknown'}</div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
             </>
           )}
         </div>
@@ -827,6 +878,40 @@ export default function VolunteerDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Contact Modal */}
+      {contactModal.show && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0, 0, 0, 0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ background: '#2A2A3D', border: '1px solid #4A2828', borderRadius: '14px', padding: '24px', maxWidth: '400px', width: '90%' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ color: '#fff', fontSize: '18px', fontWeight: 700, margin: 0 }}>📞 Contact Victim</h3>
+              <button onClick={() => setContactModal({ show: false, victim: null, taskId: null })} style={{ background: 'none', border: 'none', color: '#B0B0C3', fontSize: '24px', cursor: 'pointer' }}>✕</button>
+            </div>
+            {contactModal.victim ? (
+              <>
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ color: '#B0B0C3', fontSize: '12px', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Victim Name</div>
+                  <div style={{ color: '#fff', fontSize: '16px', fontWeight: 700 }}>{contactModal.victim.name || 'Unknown'}</div>
+                </div>
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ color: '#B0B0C3', fontSize: '12px', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Phone Number</div>
+                  <div style={{ color: '#27AE60', fontSize: '18px', fontWeight: 700, letterSpacing: '1px' }}>{contactModal.victim.phone || 'Not available'}</div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <a href={`tel:${contactModal.victim.phone || ''}`} style={{ background: '#27AE60', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px 16px', fontSize: '13px', fontWeight: 700, cursor: 'pointer', textAlign: 'center', textDecoration: 'none' }}>
+                    📞 Call
+                  </a>
+                  <button onClick={() => setContactModal({ show: false, victim: null, taskId: null })} style={{ background: '#363650', color: '#B0B0C3', border: '1px solid #4A2828', borderRadius: '8px', padding: '10px 16px', fontSize: '13px', fontWeight: 700, cursor: 'pointer' }}>
+                    Close
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div style={{ color: '#B0B0C3', fontSize: '14px' }}>No victim information available</div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

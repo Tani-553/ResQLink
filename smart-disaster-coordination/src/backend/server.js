@@ -12,6 +12,7 @@ const volunteerRoutes = require('./routes/volunteerRoutes');
 const ngoRoutes = require('./routes/ngoRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const communityRoutes = require('./routes/communityRoutes');
 const { syncUserLocation } = require('./services/realtimeLocationService');
 
 const app = express();
@@ -53,6 +54,7 @@ app.use('/api/volunteers', volunteerRoutes);
 app.use('/api/ngo', ngoRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/community', communityRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'ResQLink API running', timestamp: new Date() });

@@ -1,6 +1,7 @@
 // src/frontend/pages/NotificationsPage.jsx — Member 1: Frontend Developer
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../components/AuthContext';
+import { useLang } from '../components/LanguageContext';
 
 const typeIcon = {
   'new-request': '🚨', 'request-accepted': '🙋', 'task-update': '📋',
@@ -14,6 +15,7 @@ const typeBorderColor = {
 
 export default function NotificationsPage() {
   const { authFetch } = useAuth();
+  const { t } = useLang();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -40,17 +42,17 @@ export default function NotificationsPage() {
     <div style={{ maxWidth: '700px', margin: '0 auto', padding: '24px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h2 style={{ color: '#fff', fontSize: '20px', fontWeight: 700, margin: 0 }}>
-          🔔 Notifications {unreadCount > 0 && <span style={{ background: '#ef4444', color: '#fff', borderRadius: '20px', padding: '2px 10px', fontSize: '12px', marginLeft: '8px' }}>{unreadCount}</span>}
+          🔔 {t('notifications')} {unreadCount > 0 && <span style={{ background: '#ef4444', color: '#fff', borderRadius: '20px', padding: '2px 10px', fontSize: '12px', marginLeft: '8px' }}>{unreadCount}</span>}
         </h2>
         {unreadCount > 0 && (
           <button onClick={markAllRead} style={{ background: '#1f2937', color: '#9ca3af', border: '1px solid #374151', borderRadius: '8px', padding: '7px 14px', fontSize: '12px', cursor: 'pointer' }}>
-            ✓ Mark All Read
+            ✓ {t('markAllRead')}
           </button>
         )}
       </div>
 
-      {loading && <p style={{ color: '#6b7280' }}>Loading notifications...</p>}
-      {!loading && notifications.length === 0 && <p style={{ color: '#4b5563', fontSize: '14px' }}>No notifications yet.</p>}
+      {loading && <p style={{ color: '#6b7280' }}>{t('loadingNotifications')}</p>}
+      {!loading && notifications.length === 0 && <p style={{ color: '#4b5563', fontSize: '14px' }}>{t('noNotifications')}</p>}
 
       {notifications.map(n => (
         <div key={n._id} onClick={() => !n.isRead && markRead(n._id)}
@@ -72,7 +74,7 @@ export default function NotificationsPage() {
             </div>
             <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '12px' }}>
               <div style={{ color: '#4b5563', fontSize: '11px' }}>{new Date(n.createdAt).toLocaleString()}</div>
-              {!n.isRead && <span style={{ background: '#1d4ed8', color: '#93c5fd', borderRadius: '12px', padding: '2px 8px', fontSize: '9px', fontWeight: 700, marginTop: '4px', display: 'inline-block' }}>NEW</span>}
+              {!n.isRead && <span style={{ background: '#1d4ed8', color: '#93c5fd', borderRadius: '12px', padding: '2px 8px', fontSize: '9px', fontWeight: 700, marginTop: '4px', display: 'inline-block' }}>{t('newNotification')}</span>}
             </div>
           </div>
         </div>

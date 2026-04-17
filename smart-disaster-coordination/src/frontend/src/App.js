@@ -9,6 +9,7 @@ import NGODashboard from './pages/NGODashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import LiveMapPage from './pages/LiveMapPage';
 import NotificationsPage from './pages/NotificationsPage';
+import CommunityPage from './pages/CommunityPage';
 
 import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar';
@@ -56,6 +57,9 @@ function App() {
         } />
         <Route path="/notifications" element={
           <ProtectedRoute><NotificationsPage /></ProtectedRoute>
+        } />
+        <Route path="/community" element={
+          <ProtectedRoute role="victim"><CommunityPage /></ProtectedRoute>
         } />
 
         <Route path="/" element={

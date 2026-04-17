@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { useAuth } from '../components/AuthContext';
+import { useLang } from '../components/LanguageContext';
 
 const ROLES = [
-  { value: 'victim', label: 'Victim', color: '#e11d48' },
-  { value: 'volunteer', label: 'Volunteer', color: '#2563eb' },
-  { value: 'ngo', label: 'NGO', color: '#16a34a' },
-  { value: 'admin', label: 'Admin', color: '#d97706' }
+  { value: 'victim', color: '#e11d48' },
+  { value: 'volunteer', color: '#2563eb' },
+  { value: 'ngo', color: '#16a34a' },
+  { value: 'admin', color: '#d97706' }
 ];
 
 export default function LoginPage() {
   const { login, register } = useAuth();
+  const { t } = useLang();
 
   const [isRegister, setIsRegister] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -59,9 +61,9 @@ export default function LoginPage() {
   return (
     <div style={styles.page}>
       <div style={styles.card}>
-        <h1 style={styles.title}>🛡️ ResQLink</h1>
+        <h1 style={styles.title}>🛡️ {t('appName')}</h1>
         <p style={styles.subtitle}>
-          {isRegister ? 'Create a new account' : 'Sign in to continue'}
+          {isRegister ? t('createAccount') : t('signIn')}
         </p>
 
         {error && <div style={styles.errorBox}>{error}</div>}
@@ -72,7 +74,7 @@ export default function LoginPage() {
               <input
                 type="text"
                 name="name"
-                placeholder="Full Name"
+                placeholder={t('fullName')}
                 value={form.name}
                 onChange={handleChange}
                 required
@@ -82,7 +84,7 @@ export default function LoginPage() {
               <input
                 type="text"
                 name="phone"
-                placeholder="Phone Number"
+                placeholder={t('phoneNumber')}
                 value={form.phone}
                 onChange={handleChange}
                 required
@@ -94,7 +96,7 @@ export default function LoginPage() {
           <input
             type="email"
             name="email"
-            placeholder="Email Address"
+            placeholder={t('email')}
             value={form.email}
             onChange={handleChange}
             required
@@ -104,7 +106,7 @@ export default function LoginPage() {
           <input
             type="password"
             name="password"
-            placeholder="Password"
+            placeholder={t('password')}
             value={form.password}
             onChange={handleChange}
             required
@@ -113,7 +115,7 @@ export default function LoginPage() {
 
           {isRegister && (
             <div style={{ marginBottom: '16px' }}>
-              <p style={styles.roleLabel}>Choose your role</p>
+              <p style={styles.roleLabel}>{t('selectRole')}</p>
               <div style={styles.roleGrid}>
                 {ROLES.map((role) => (
                   <button
@@ -131,7 +133,7 @@ export default function LoginPage() {
                       color: form.role === role.value ? role.color : '#B0B0C3'
                     }}
                   >
-                    {role.label}
+                    {t(role.value)}
                   </button>
                 ))}
               </div>
@@ -140,15 +142,15 @@ export default function LoginPage() {
 
           <button type="submit" disabled={loading} style={styles.submitButton} className="resqlink-button">
             {loading
-              ? 'Please wait...'
+              ? t('loading')
               : isRegister
-              ? 'Create Account'
-              : 'Login'}
+              ? t('register')
+              : t('login')}
           </button>
         </form>
 
         <p style={styles.toggleText}>
-          {isRegister ? 'Already have an account?' : "Don't have an account?"}{' '}
+          {isRegister ? t('alreadyHaveAccount') : t('dontHaveAccount')}{' '}
           <span
             style={styles.toggleLink}
             onClick={() => {
@@ -156,7 +158,7 @@ export default function LoginPage() {
               setError('');
             }}
           >
-            {isRegister ? 'Login here' : 'Register here'}
+            {isRegister ? t('login') : t('register')}
           </span>
         </p>
       </div>
