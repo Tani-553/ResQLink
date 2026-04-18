@@ -12,7 +12,7 @@ router.post('/register', protect, authorize('ngo'), upload.array('documents', 5)
   try {
     const { orgName, description, contactEmail, contactPhone } = req.body;
     const existing = await NGOProfile.findOne({ user: req.user._id });
-    if (existing) return res.status(400).json({ success: false, message: 'NGO profile already exists.' });
+    if (existing) return res.status(400).json({ success: false, messageKey: 'ngo.profileAlreadyExists' });
 
     const docs = req.files ? req.files.map(f => ({ filename: f.originalname, path: f.path })) : [];
     const ngo = await NGOProfile.create({
@@ -21,7 +21,7 @@ router.post('/register', protect, authorize('ngo'), upload.array('documents', 5)
     req.io.emit('ngo-pending', { ngoId: ngo._id, orgName });
     res.status(201).json({ success: true, data: ngo });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, messageKey: 'general.internalServerError' });
   }
 });
 
@@ -29,10 +29,10 @@ router.post('/register', protect, authorize('ngo'), upload.array('documents', 5)
 router.get('/profile', protect, authorize('ngo'), async (req, res) => {
   try {
     const ngo = await NGOProfile.findOne({ user: req.user._id }).populate('volunteers', 'name phone');
-    if (!ngo) return res.status(404).json({ success: false, message: 'NGO profile not found.' });
+    if (!ngo) return res.status(404).json({ success: false, messageKey: 'ngo.profileNotFound' });
     res.json({ success: true, data: ngo });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, messageKey: 'general.internalServerError' });
   }
 });
 
@@ -47,7 +47,7 @@ router.put('/resources', protect, authorize('ngo'), async (req, res) => {
     );
     res.json({ success: true, data: ngo });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, messageKey: 'general.internalServerError' });
   }
 });
 
@@ -63,7 +63,7 @@ router.post('/assign-volunteer', protect, authorize('ngo'), async (req, res) => 
     req.io.to(`zone-${zone}`).emit('volunteer-assigned', { volunteerId, zone });
     res.json({ success: true, data: ngo });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, messageKey: 'general.internalServerError' });
   }
 });
 

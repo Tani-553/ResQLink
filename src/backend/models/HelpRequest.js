@@ -10,6 +10,8 @@ const helpRequestSchema = new mongoose.Schema({
     coordinates: { type: [Number], required: true },  // [lng, lat]
     address: { type: String }
   },
+  // Zone assignment - auto-determined based on location
+  zone: { type: mongoose.Schema.Types.ObjectId, ref: 'Zone', default: null },
   photo: { type: String },  // file path or URL
   status: {
     type: String,

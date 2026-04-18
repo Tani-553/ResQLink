@@ -5,12 +5,14 @@ const cors = require('cors');
 const http = require('http');
 const { Server } = require('socket.io');
 const connectDB = require('./config/db');
+const i18nMiddleware = require('./middleware/i18nMiddleware');
 
 // Route imports
 const authRoutes = require('./routes/authRoutes');
 const requestRoutes = require('./routes/requestRoutes');
 const volunteerRoutes = require('./routes/volunteerRoutes');
 const ngoRoutes = require('./routes/ngoRoutes');
+const zoneRoutes = require('./routes/zoneRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 
@@ -24,6 +26,7 @@ const io = new Server(server, {
 app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:3000' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(i18nMiddleware);
 
 app.use((req, res, next) => {
   req.io = io;
@@ -34,11 +37,12 @@ app.use('/api/auth', authRoutes);
 app.use('/api/requests', requestRoutes);
 app.use('/api/volunteers', volunteerRoutes);
 app.use('/api/ngo', ngoRoutes);
+app.use('/api/zones', zoneRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', notificationRoutes);
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Disaster Coordination API running', timestamp: new Date() });
+  res.json({ status: 'OK', message: req.t('general.apiRunning'), timestamp: new Date() });
 });
 
 io.on('connection', (socket) => {
@@ -64,7 +68,7 @@ io.on('connection', (socket) => {
 
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ success: false, message: 'Internal server error' });
+  res.status(500).json({ success: false, message: req.t ? req.t('general.internalServerError') : 'Internal server error' });
 });
 
 const PORT = process.env.PORT || 5000;

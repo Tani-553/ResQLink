@@ -118,5 +118,73 @@
     "loading": "Loading notifications...",
     "noNotifications": "No notifications yet.",
     "markAllRead": "Mark All Read"
+  },
+  "auth": {
+    "noToken": "Not authorized. No token.",
+    "userNotFound": "User not found.",
+    "tokenInvalid": "Token invalid or expired.",
+    "roleUnauthorized": "Role '{{role}}' is not authorized for this action.",
+    "emailAlreadyRegistered": "Email already registered.",
+    "emailPasswordRequired": "Please provide email and password.",
+    "invalidCredentials": "Invalid credentials.",
+    "registerSuccess": "Registration successful.",
+    "loginSuccess": "Login successful."
+  },
+  "request": {
+    "typeDescriptionRequired": "Request type and description are required.",
+    "validCoordinatesRequired": "Valid longitude and latitude are required.",
+    "duplicateRequestDetected": "Duplicate request detected. Your previous request is still active.",
+    "requestCreated": "Help request created successfully.",
+    "volunteerLocationRequired": "Volunteer location is required to fetch nearby requests.",
+    "inactiveVolunteerCannotAccept": "Inactive volunteers cannot accept tasks.",
+    "requestNotFound": "Request not found.",
+    "requestNoLongerAvailable": "Request is no longer available.",
+    "taskAcceptedSuccess": "Task accepted successfully.",
+    "invalidRequestStatus": "Invalid request status.",
+    "cannotUpdateOtherRequests": "You can only update requests assigned to you.",
+    "cannotUpdateOwnRequest": "You can only update your own requests.",
+    "noPermissionResolve": "You do not have permission to resolve this request.",
+    "requestResolved": "Request marked as resolved."
+  },
+  "ngoErrors": {
+    "profileAlreadyExists": "NGO profile already exists.",
+    "profileCreatedSuccess": "NGO profile created successfully.",
+    "profileNotFound": "NGO profile not found.",
+    "resourcesUpdatedSuccess": "Resources updated successfully.",
+    "ngoApprovedSuccess": "NGO approved successfully.",
+    "ngoRejectedSuccess": "NGO rejected successfully."
+  },
+  "notificationErrors": {
+    "markedAsRead": "Marked as read.",
+    "allMarkedAsRead": "All notifications marked as read.",
+    "pushSubscriptionSaved": "Push subscription saved.",
+    "broadcastSentSuccess": "Broadcast sent to {{count}} users."
+  },
+  "adminErrors": {
+    "dashboardLoaded": "Dashboard loaded successfully.",
+    "noPendingNgos": "No pending NGOs."
+  },
+  "zone": {
+    "zoneManagement": "Zone Management",
+    "createZone": "Create Zone",
+    "zoneName": "Zone Name",
+    "description": "Description",
+    "centerLatitude": "Center Latitude",
+    "centerLongitude": "Center Longitude",
+    "maxVolunteers": "Max Volunteers",
+    "manageVolunteers": "Manage Volunteers",
+    "selectVolunteer": "Select a volunteer...",
+    "assign": "Assign",
+    "zoneCreatedSuccess": "Zone created successfully!",
+    "zoneDeletedSuccess": "Zone deleted successfully!",
+    "volunteerAssignedSuccess": "Volunteer assigned successfully!",
+    "noZonesCreated": "No zones created yet.",
+    "volunteerCount": "Volunteers",
+    "activeStatus": "Active"
+  },
+  "general": {
+    "internalServerError": "Internal server error",
+    "apiRunning": "API running",
+    "corsBlocked": "CORS policy blocked origin: {{origin}}"
   }
 }

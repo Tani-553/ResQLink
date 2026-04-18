@@ -12,6 +12,10 @@ const userSchema = new mongoose.Schema({
     type: { type: String, enum: ['Point'], default: 'Point' },
     coordinates: { type: [Number], default: [0, 0] }  // [longitude, latitude]
   },
+  // Zone assignment for volunteers
+  assignedZone: { type: mongoose.Schema.Types.ObjectId, ref: 'Zone', default: null },
+  // NGO that assigned this volunteer (if volunteer)
+  assignedNGO: { type: mongoose.Schema.Types.ObjectId, ref: 'NGOProfile', default: null },
   isActive: { type: Boolean, default: true },
   isVerified: { type: Boolean, default: false },
   fcmToken: { type: String },  // For push notifications

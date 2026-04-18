@@ -9,6 +9,9 @@ const ngoProfileSchema = new mongoose.Schema({
   isApproved: { type: Boolean, default: false },
   approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   approvedAt: { type: Date },
+  // Zones managed by this NGO
+  zones: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Zone' }],
+  // All volunteers under this NGO
   volunteers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   resources: {
     reliefKits: { type: Number, default: 0 },
@@ -16,7 +19,6 @@ const ngoProfileSchema = new mongoose.Schema({
     vehicles: { type: Number, default: 0 },
     medicalSupplies: { type: Number, default: 0 }
   },
-  activeZones: [{ type: String }],
   contactEmail: { type: String },
   contactPhone: { type: String },
   createdAt: { type: Date, default: Date.now }

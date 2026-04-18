@@ -1,5 +1,6 @@
 // src/frontend/components/AuthContext.jsx — Member 1: Frontend Developer
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { translateErrorMessage } from '../utils/errorTranslator';
 
 const AuthContext = createContext(null);
 const API = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
@@ -27,7 +28,7 @@ export function AuthProvider({ children }) {
       body: JSON.stringify({ email, password })
     });
     const data = await res.json();
-    if (!data.success) throw new Error(data.message);
+    if (!data.success) throw new Error(translateErrorMessage(data));
     localStorage.setItem('token', data.token);
     setToken(data.token);
     setUser(data.user);
@@ -39,7 +40,7 @@ export function AuthProvider({ children }) {
       body: JSON.stringify(form)
     });
     const data = await res.json();
-    if (!data.success) throw new Error(data.message);
+    if (!data.success) throw new Error(translateErrorMessage(data));
     localStorage.setItem('token', data.token);
     setToken(data.token);
     setUser(data.user);

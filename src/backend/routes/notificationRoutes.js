@@ -12,7 +12,7 @@ router.get('/', protect, async (req, res) => {
       .sort({ createdAt: -1 }).limit(50);
     res.json({ success: true, data: notifications });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, messageKey: 'general.internalServerError' });
   }
 });
 
@@ -20,9 +20,9 @@ router.get('/', protect, async (req, res) => {
 router.put('/:id/read', protect, async (req, res) => {
   try {
     await Notification.findByIdAndUpdate(req.params.id, { isRead: true });
-    res.json({ success: true, message: 'Marked as read.' });
+    res.json({ success: true, messageKey: 'notification.markedAsRead' });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, messageKey: 'general.internalServerError' });
   }
 });
 
@@ -30,9 +30,9 @@ router.put('/:id/read', protect, async (req, res) => {
 router.put('/read-all', protect, async (req, res) => {
   try {
     await Notification.updateMany({ recipient: req.user._id, isRead: false }, { isRead: true });
-    res.json({ success: true, message: 'All notifications marked as read.' });
+    res.json({ success: true, messageKey: 'notification.allMarkedAsRead' });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, messageKey: 'general.internalServerError' });
   }
 });
 
@@ -41,9 +41,9 @@ router.post('/subscribe', protect, async (req, res) => {
   try {
     const { subscription } = req.body;
     await saveSubscription(req.user._id, subscription);
-    res.json({ success: true, message: 'Push subscription saved.' });
+    res.json({ success: true, messageKey: 'notification.pushSubscriptionSaved' });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, messageKey: 'general.internalServerError' });
   }
 });
 

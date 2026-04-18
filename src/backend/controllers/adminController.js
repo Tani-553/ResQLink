@@ -17,7 +17,7 @@ exports.getDashboard = async (req, res) => {
     ]);
     res.json({ success: true, data: { totalRequests, pendingRequests, resolvedRequests, totalVolunteers, totalNGOs, activeNGOs } });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, messageKey: 'general.internalServerError' });
   }
 };
 
@@ -29,7 +29,7 @@ exports.getNGOs = async (req, res) => {
     const ngos = await NGOProfile.find(filter).populate('user', 'name email phone').sort({ createdAt: -1 });
     res.json({ success: true, count: ngos.length, data: ngos });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, messageKey: 'general.internalServerError' });
   }
 };
 
@@ -43,7 +43,7 @@ exports.verifyNGO = async (req, res) => {
       { new: true }
     ).populate('user', 'name email');
 
-    if (!ngo) return res.status(404).json({ success: false, message: 'NGO not found.' });
+    if (!ngo) return res.status(404).json({ success: false, messageKey: 'ngo.profileNotFound' });
 
     // Notify NGO user
     await Notification.create({
@@ -58,7 +58,7 @@ exports.verifyNGO = async (req, res) => {
     req.io.emit('ngo-verified', { ngoId: ngo._id, approved });
     res.json({ success: true, data: ngo });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, messageKey: 'general.internalServerError' });
   }
 };
 
@@ -73,9 +73,9 @@ exports.broadcast = async (req, res) => {
     }));
     await Notification.insertMany(notifications);
     req.io.emit('broadcast', { title, message, zone });
-    res.json({ success: true, message: `Broadcast sent to ${users.length} users.` });
+    res.json({ success: true, messageKey: 'notification.broadcastSentSuccess', count: users.length });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, messageKey: 'general.internalServerError' });
   }
 };
 
@@ -87,6 +87,6 @@ exports.getUsers = async (req, res) => {
     const users = await User.find(filter).select('-password').sort({ createdAt: -1 });
     res.json({ success: true, count: users.length, data: users });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, messageKey: 'general.internalServerError' });
   }
 };

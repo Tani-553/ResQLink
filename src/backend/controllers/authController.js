@@ -10,7 +10,7 @@ exports.register = async (req, res) => {
   try {
     const { name, email, phone, password, role } = req.body;
     const exists = await User.findOne({ email });
-    if (exists) return res.status(400).json({ success: false, message: 'Email already registered.' });
+    if (exists) return res.status(400).json({ success: false, messageKey: 'auth.emailAlreadyRegistered' });
 
     const user = await User.create({ name, email, phone, password, role });
     const token = generateToken(user._id);
@@ -25,11 +25,11 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password)
-      return res.status(400).json({ success: false, message: 'Please provide email and password.' });
+      return res.status(400).json({ success: false, messageKey: 'auth.emailPasswordRequired' });
 
     const user = await User.findOne({ email }).select('+password');
     if (!user || !(await user.matchPassword(password)))
-      return res.status(401).json({ success: false, message: 'Invalid credentials.' });
+      return res.status(401).json({ success: false, messageKey: 'auth.invalidCredentials' });
 
     const token = generateToken(user._id);
     res.json({ success: true, token, user: { id: user._id, name: user.name, role: user.role, email: user.email } });
