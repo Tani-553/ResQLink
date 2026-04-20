@@ -1,7 +1,7 @@
 // src/frontend/pages/NotificationsPage.jsx — Member 1: Frontend Developer
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../components/AuthContext';
-import { useLang } from '../components/LanguageContext';
+import { useAuth } from '../components/AuthContext.jsx';
+import { useLang } from '../components/LanguageContext.jsx';
 
 const typeIcon = {
   'new-request': '🚨', 'request-accepted': '🙋', 'task-update': '📋',

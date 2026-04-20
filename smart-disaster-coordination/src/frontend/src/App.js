@@ -1,4 +1,4 @@
-// src/frontend/App.js - Member 1: Frontend Developer
+// src/frontend/App.js
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
@@ -14,6 +14,9 @@ import CommunityPage from './pages/CommunityPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar';
 import { useAuth } from './components/AuthContext';
+
+// 🔥 ADD THIS
+import { Toaster } from "react-hot-toast";
 
 function App() {
   const { user } = useAuth();
@@ -36,7 +39,12 @@ function App() {
 
   return (
     <Router>
+
+      {/* 🔥 ADD THIS (toast container) */}
+      <Toaster position="top-right" />
+
       {user && <Navbar />}
+
       <Routes>
         <Route path="/login" element={!user ? <LoginPage /> : <Navigate to={roleDashboard[user.role]} />} />
 

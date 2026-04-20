@@ -1,9 +1,10 @@
+import MapView from "../components/MapView.jsx";
+import { useNavigate } from "react-router-dom";
 import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
-import { useAuth } from '../components/AuthContext';
-import { useLang } from '../components/LanguageContext';
-import { loadGoogleMaps } from '../utils/loadGoogleMaps';
+import { useAuth } from '../components/AuthContext.jsx';
+import { useLang } from '../components/LanguageContext.jsx';
 
-const mapsApiKey = process.env.REACT_APP_GOOGLE_MAPS_KEY;
+
 
 const priorityColors = {
   low: '#27AE60',
@@ -257,135 +258,7 @@ export default function VolunteerDashboard() {
     return () => window.clearTimeout(timeoutId);
   }, [toast]);
 
-  useEffect(() => {
-    if (!mapsApiKey || !locationState) return;
-
-    let cancelled = false;
-
-    const initMap = () => {
-      if (!mapRef.current || !window.google?.maps || !locationState) return;
-      setMapLoaded(false);
-      setMapError('');
-
-      try {
-        const map = new window.google.maps.Map(mapRef.current, {
-          center: { lat: locationState.latitude, lng: locationState.longitude },
-          zoom: 13,
-          styles: [
-            { elementType: 'geometry', stylers: [{ color: '#1a1a2e' }] },
-            { elementType: 'labels.text.stroke', stylers: [{ color: '#1a1a2e' }] },
-            { elementType: 'labels.text.fill', stylers: [{ color: '#e5e7eb' }] },
-            {
-              featureType: 'administrative.locality',
-              elementType: 'labels.text.fill',
-              stylers: [{ color: '#e5e7eb' }]
-            },
-            {
-              featureType: 'poi',
-              elementType: 'labels.text.fill',
-              stylers: [{ color: '#d1d5db' }]
-            },
-            {
-              featureType: 'poi.park',
-              elementType: 'geometry',
-              stylers: [{ color: '#1a1a2e' }]
-            },
-            {
-              featureType: 'poi.park',
-              elementType: 'labels.text.fill',
-              stylers: [{ color: '#6b7280' }]
-            },
-            {
-              featureType: 'road',
-              elementType: 'geometry',
-              stylers: [{ color: '#2d3748' }]
-            },
-            {
-              featureType: 'road',
-              elementType: 'geometry.stroke',
-              stylers: [{ color: '#2d3748' }]
-            },
-            {
-              featureType: 'road',
-              elementType: 'labels.text.fill',
-              stylers: [{ color: '#9ca3af' }]
-            },
-            {
-              featureType: 'road.highway',
-              elementType: 'geometry',
-              stylers: [{ color: '#4a5568' }]
-            },
-            {
-              featureType: 'road.highway',
-              elementType: 'geometry.stroke',
-              stylers: [{ color: '#4a5568' }]
-            },
-            {
-              featureType: 'road.highway',
-              elementType: 'labels.text.fill',
-              stylers: [{ color: '#f3f4f6' }]
-            },
-            {
-              featureType: 'transit',
-              elementType: 'geometry',
-              stylers: [{ color: '#2d3748' }]
-            },
-            {
-              featureType: 'transit.station',
-              elementType: 'labels.text.fill',
-              stylers: [{ color: '#d1d5db' }]
-            },
-            {
-              featureType: 'water',
-              elementType: 'geometry',
-              stylers: [{ color: '#1e293b' }]
-            },
-            {
-              featureType: 'water',
-              elementType: 'labels.text.fill',
-              stylers: [{ color: '#9ca3af' }]
-            }
-          ],
-          disableDefaultUI: true,
-          zoomControl: true,
-          mapTypeControl: false,
-          scaleControl: false,
-          streetViewControl: false,
-          rotateControl: false,
-          fullscreenControl: false
-        });
-
-        new window.google.maps.Marker({
-          position: { lat: locationState.latitude, lng: locationState.longitude },
-          map,
-          title: 'Your Location',
-          icon: {
-            path: window.google.maps.SymbolPath.CIRCLE,
-            scale: 8,
-            fillColor: '#C0392B',
-            fillOpacity: 1,
-            strokeColor: '#fff',
-            strokeWeight: 2
-          }
-        });
-
-        setMapLoaded(true);
-      } catch (err) {
-        setMapError('Failed to initialize map.');
-      }
-    };
-
-    loadGoogleMaps(mapsApiKey)
-      .then(initMap)
-      .catch((err) => {
-        if (!cancelled) setMapError(err.message);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [locationState]);
-
+  
   const taskStats = useMemo(() => {
     const assigned = myTasks.filter((task) => task.status === 'assigned').length;
     const inProgress = myTasks.filter((task) => task.status === 'in-progress').length;
@@ -642,7 +515,7 @@ export default function VolunteerDashboard() {
       </div>
     );
   };
-
+const navigate = useNavigate();
   return (
     <div style={{ maxWidth: '1120px', margin: '0 auto', padding: '24px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', alignItems: 'flex-start', marginBottom: '22px', flexWrap: 'wrap' }}>
@@ -688,27 +561,27 @@ export default function VolunteerDashboard() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', marginBottom: '22px' }}>
         <SummaryCard
-          label={t('nearbyRequests')}
+          label={t('Nearby Requests')}
           value={taskStats.openNearby}
-          helper={t('openHelpRequests')}
+          helper={t('Open Help Requests')}
           accent="#3b82f6"
         />
         <SummaryCard
-          label={t('criticalNearby')}
+          label={t('Critical Nearby')}
           value={taskStats.criticalNearby}
-          helper={t('highestPriorityRequests')}
+          helper={t('Highest Priority Requests')}
           accent="#8b5cf6"
         />
         <SummaryCard
-          label={t('readyToStart')}
+          label={t('Ready To Start')}
           value={taskStats.assigned}
-          helper={t('acceptedTasksWaiting')}
+          helper={t('Accepted Tasks Waiting')}
           accent="#f59e0b"
         />
         <SummaryCard
-          label={t('inProgress')}
+          label={t('In Progress')}
           value={taskStats.inProgress}
-          helper={t('activelyWorkingTasks')}
+          helper={t('Actively Working Tasks')}
           accent="#22c55e"
         />
       </div>
@@ -852,18 +725,29 @@ export default function VolunteerDashboard() {
                 {mapError}
               </div>
             )}
-            <div style={{ position: 'relative', height: '200px', width: '100%', borderRadius: '8px', background: '#1a1a2e' }}>
-              <div ref={mapRef} style={{ height: '100%', width: '100%', borderRadius: '8px' }} />
+            <div
+              onClick={() => navigate("/map")}
+              style={{
+                position: 'relative',
+                height: '220px',
+                width: '100%',
+                borderRadius: '10px',
+                overflow: 'hidden',
+                background:'#020617',
+                cursor: 'pointer'
+              }}
+            >
+              <MapView
+                userLocation={locationState}
+                requests={[...requests, ...myTasks, ...completedTasks]}
+              />
+            </div>
               {!locationState && !locationError && (
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '13px', background: 'rgba(26, 26, 46, 0.75)', borderRadius: '8px' }}>
                   Getting your location...
                 </div>
               )}
-              {locationState && !mapLoaded && !mapError && (
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '13px', background: 'rgba(26, 26, 46, 0.75)', borderRadius: '8px' }}>
-                  Loading map...
-                </div>
-              )}
+              
               {mapError && (
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fecaca', fontSize: '13px', background: 'rgba(26, 26, 46, 0.85)', borderRadius: '8px' }}>
                   Unable to load map
@@ -878,8 +762,7 @@ export default function VolunteerDashboard() {
           </div>
         </div>
       </div>
-
-      {/* Contact Modal */}
+  )
       {contactModal.show && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0, 0, 0, 0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: '#2A2A3D', border: '1px solid #4A2828', borderRadius: '14px', padding: '24px', maxWidth: '400px', width: '90%' }}>
@@ -912,6 +795,5 @@ export default function VolunteerDashboard() {
           </div>
         </div>
       )}
-    </div>
-  );
+
 }

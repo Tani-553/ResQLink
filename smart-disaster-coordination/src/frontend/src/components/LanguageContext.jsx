@@ -1,30 +1,23 @@
-// src/frontend/components/LanguageContext.jsx
-import React, { createContext, useContext, useState } from 'react';
-import { translations } from '../i18n/translations';
+import React, { createContext, useContext, useState } from "react";
 
 const LanguageContext = createContext();
 
-export function LanguageProvider({ children }) {
-  const [lang, setLang] = useState(localStorage.getItem('lang') || 'en');
+export const LanguageProvider = ({ children }) => {
+  const [lang, setLang] = useState("en"); // ✅ IMPORTANT
 
-  const t = (key) => translations[lang]?.[key] || translations['en'][key] || key;
-
-  const changeLang = (newLang) => {
-    setLang(newLang);
-    localStorage.setItem('lang', newLang);
+  const translations = {
+    en: { login: "Login", email: "Email", password: "Password" },
+    ta: { login: "உள்நுழை", email: "மின்னஞ்சல்", password: "கடவுச்சொல்" },
+    hi: { login: "लॉगिन", email: "ईमेल", password: "पासवर्ड" }
   };
 
+  const t = (key) => translations[lang][key] || key;
+
   return (
-    <LanguageContext.Provider value={{ lang, t, changeLang }}>
+    <LanguageContext.Provider value={{ t, lang, setLang }}> {/* ✅ ADD setLang */}
       {children}
     </LanguageContext.Provider>
   );
-}
-
-export const useLang = () => {
-  const context = useContext(LanguageContext);
-  if (!context) {
-    throw new Error('useLang must be used within a LanguageProvider');
-  }
-  return context;
 };
+
+export const useLang = () => useContext(LanguageContext);

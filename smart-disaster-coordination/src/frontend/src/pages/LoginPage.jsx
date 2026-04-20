@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useAuth } from '../components/AuthContext';
-import { useLang } from '../components/LanguageContext';
+import { useAuth } from '../components/AuthContext.jsx';
+import { useLang } from '../components/LanguageContext.jsx';
 
 const ROLES = [
   { value: 'victim', color: '#e11d48' },
@@ -11,7 +11,7 @@ const ROLES = [
 
 export default function LoginPage() {
   const { login, register } = useAuth();
-  const { t } = useLang();
+  const { t, lang, setLang } = useLang(); // ✅ updated
 
   const [isRegister, setIsRegister] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -60,10 +60,44 @@ export default function LoginPage() {
 
   return (
     <div style={styles.page}>
+
+      {/* 🌍 Language Switch (NEW) */}
+      <div style={styles.langSwitcher}>
+        <button
+          onClick={() => setLang("en")}
+          style={{
+            ...styles.langBtn,
+            background: lang === "en" ? "#E74C3C" : "#2A2A3D"
+          }}
+        >
+          EN
+        </button>
+
+        <button
+          onClick={() => setLang("ta")}
+          style={{
+            ...styles.langBtn,
+            background: lang === "ta" ? "#E74C3C" : "#2A2A3D"
+          }}
+        >
+          தமிழ்
+        </button>
+
+        <button
+          onClick={() => setLang("hi")}
+          style={{
+            ...styles.langBtn,
+            background: lang === "hi" ? "#E74C3C" : "#2A2A3D"
+          }}
+        >
+          हिन्दी
+        </button>
+      </div>
+
       <div style={styles.card}>
-        <h1 style={styles.title}>🛡️ {t('appName')}</h1>
+        <h1 style={styles.title}>🛡️ {t('ResQLink')}</h1>
         <p style={styles.subtitle}>
-          {isRegister ? t('createAccount') : t('signIn')}
+          {isRegister ? t('Create Account') : t('signIn')}
         </p>
 
         {error && <div style={styles.errorBox}>{error}</div>}
@@ -150,7 +184,7 @@ export default function LoginPage() {
         </form>
 
         <p style={styles.toggleText}>
-          {isRegister ? t('alreadyHaveAccount') : t('dontHaveAccount')}{' '}
+          {isRegister ? t('already Have Account') : t('dont Have Account')}{' '}
           <span
             style={styles.toggleLink}
             onClick={() => {
@@ -173,8 +207,29 @@ const styles = {
     justifyContent: 'center',
     alignItems: 'center',
     background: '#1C1C2E',
-    padding: '24px'
+    padding: '24px',
+    position: 'relative' // ✅ added for positioning
   },
+
+  // 🌍 NEW
+  langSwitcher: {
+    position: 'absolute',
+    top: '20px',
+    right: '20px',
+    display: 'flex',
+    gap: '8px'
+  },
+
+  langBtn: {
+    padding: '6px 10px',
+    borderRadius: '6px',
+    border: '1px solid #4A2828',
+    color: '#fff',
+    cursor: 'pointer',
+    fontSize: '12px',
+    fontWeight: '600'
+  },
+
   card: {
     width: '100%',
     maxWidth: '420px',

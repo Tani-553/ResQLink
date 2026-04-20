@@ -1,6 +1,6 @@
 // src/frontend/components/LanguageSwitcher.jsx
 import React from 'react';
-import { useLang } from './LanguageContext';
+import { useLang } from './LanguageContext.jsx';
 
 const LANGS = [
   { code: 'en', label: 'EN', flag: '🇬🇧' },
@@ -9,14 +9,13 @@ const LANGS = [
 ];
 
 export default function LanguageSwitcher() {
-  const { lang, changeLang } = useLang();
-
+  const { lang, setLang } = useLang();
   return (
     <div style={{ display: 'flex', gap: '6px' }}>
       {LANGS.map((l) => (
         <button
           key={l.code}
-          onClick={() => changeLang(l.code)}
+          onClick={() => setLang(l.code)}
           title={`${l.flag} ${l.label}`}
           style={{
             background: lang === l.code ? '#C0392B' : '#363650',
