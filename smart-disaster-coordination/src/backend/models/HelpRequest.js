@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 
 const helpRequestSchema = new mongoose.Schema({
   victim: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  type: { type: String, enum: ['food', 'medical', 'shelter', 'rescue', 'other'], required: true },
+  type: { type: String, enum: ['food', 'medical', 'shelter', 'rescue', 'clothes', 'other'], required: true },
   description: { type: String, required: [true, 'Description is required'], maxlength: 500 },
   location: {
     type: { type: String, enum: ['Point'], default: 'Point' },

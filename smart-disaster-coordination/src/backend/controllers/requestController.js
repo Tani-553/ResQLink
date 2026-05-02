@@ -9,9 +9,16 @@ const VALID_STATUSES = ['pending', 'assigned', 'in-progress', 'resolved', 'cance
 const PRIORITY_WEIGHT = { low: 1, medium: 2, high: 3, critical: 4 };
 
 const emitRequestEvent = (req, event, payload) => {
-  req.io.emit(event, payload);
-  if (payload?.requestId) {
-    req.io.to(`request-${payload.requestId}`).emit(event, payload);
+  try {
+    if (!req.io) return; // ✅ prevent crash
+
+    req.io.emit(event, payload);
+
+    if (payload?.requestId) {
+      req.io.to(`request-${payload.requestId}`).emit(event, payload);
+    }
+  } catch (err) {
+    console.log("Socket error:", err.message);
   }
 };
 
@@ -21,8 +28,9 @@ exports.createRequest = async (req, res) => {
     const lng = Number(longitude);
     const lat = Number(latitude);
     const normalizedPriority = priority || 'medium';
+    const normalizedDescription = typeof description === 'string' ? description.trim() : '';
 
-    if (!type || !description) {
+    if (!type || !normalizedDescription) {
       return res.status(400).json({ success: false, message: 'Request type and description are required.' });
     }
 
@@ -49,35 +57,53 @@ exports.createRequest = async (req, res) => {
       });
     }
 
-    const nearestVolunteers = await findNearestVolunteers({
-      longitude: lng,
-      latitude: lat,
-      maxDistance: 15000,
-      limit: 5
-    });
+    let nearestVolunteers = [];
+try {
+  nearestVolunteers = await findNearestVolunteers({
+    longitude: lng,
+    latitude: lat,
+    maxDistance: 15000,
+    limit: 5
+  });
+} catch (err) {
+  console.log("Matching error:", err.message);
+}
 
     const helpRequest = await HelpRequest.create({
       victim: req.user._id,
       type,
-      description,
+      description: normalizedDescription,
       priority: normalizedPriority,
       location: { type: 'Point', coordinates: [lng, lat], address },
       photo: req.file ? req.file.path : null
     });
 
-    emitRequestEvent(req, 'new-sos-request', {
-      requestId: helpRequest._id,
-      type,
-      location: { longitude: lng, latitude: lat },
-      priority: normalizedPriority,
-      nearestVolunteerIds: nearestVolunteers.map(v => v._id)
-    });
+    const createdRequest = await HelpRequest.findById(helpRequest._id)
+      .populate('victim', 'name phone')
+      .populate('assignedVolunteer', 'name phone');
 
-    await sendNotificationToNearby({ type, location: [lng, lat], requestId: helpRequest._id });
+    const realtimePayload = {
+      ...createdRequest.toObject(),
+      requestId: helpRequest._id.toString(),
+      nearestVolunteerIds: nearestVolunteers.map((volunteer) => volunteer._id.toString())
+    };
+
+    emitRequestEvent(req, 'new-sos-request', realtimePayload);
+    emitRequestEvent(req, 'sos-alert', realtimePayload);
+
+    try {
+  await sendNotificationToNearby({
+    type,
+    location: [lng, lat],
+    requestId: helpRequest._id
+  });
+} catch (err) {
+  console.log("Notification error:", err.message);
+}
 
     return res.status(201).json({
       success: true,
-      data: helpRequest,
+      data: createdRequest,
       matching: {
         volunteersFound: nearestVolunteers.length,
         nearestVolunteers
@@ -126,7 +152,7 @@ exports.getNearbyRequests = async (req, res) => {
 exports.getMyRequests = async (req, res) => {
   try {
     const requests = await HelpRequest.find({ victim: req.user._id })
-      .populate('assignedVolunteer', 'name phone')
+      .populate('assignedVolunteer', 'name phone location')
       .sort({ createdAt: -1 });
 
     return res.json({ success: true, data: requests });
@@ -398,7 +424,7 @@ exports.getAllRequests = async (req, res) => {
 
     const requests = await HelpRequest.find(filter)
       .populate('victim', 'name phone')
-      .populate('assignedVolunteer', 'name')
+      .populate('assignedVolunteer', 'name location')
       .sort({ createdAt: -1 })
       .skip((pageNumber - 1) * limitNumber)
       .limit(limitNumber);

@@ -14,7 +14,9 @@ const ngoRoutes = require('./routes/ngoRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const communityRoutes = require('./routes/communityRoutes');
+const i18nRoutes = require('./routes/i18nRoutes');
 const { syncUserLocation } = require('./services/realtimeLocationService');
+const User = require('./models/User');
 
 const app = express();
 const server = http.createServer(app);
@@ -56,6 +58,7 @@ app.use('/api/ngo', ngoRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/community', communityRoutes);
+app.use('/api/i18n', i18nRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'ResQLink API running', timestamp: new Date() });
@@ -86,6 +89,17 @@ io.on('connection', (socket) => {
   socket.on('volunteer-location-update', (data) => {
     if (!data?.requestId) return;
     if (data?.userId && Number.isFinite(Number(data?.longitude)) && Number.isFinite(Number(data?.latitude))) {
+      User.findByIdAndUpdate(
+        data.userId,
+        {
+          location: {
+            type: 'Point',
+            coordinates: [Number(data.longitude), Number(data.latitude)]
+          }
+        },
+        { new: false }
+      ).catch(() => {});
+
       syncUserLocation({
         userId: data.userId,
         role: data.role || 'volunteer',

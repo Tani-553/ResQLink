@@ -97,6 +97,61 @@ router.get('/profile', protect, authorize('ngo'), async (req, res) => {
   }
 });
 
+router.get('/nearby', protect, async (req, res) => {
+  try {
+    const fallbackCoordinates = req.user?.location?.coordinates || [];
+    const longitude = Number(req.query.longitude ?? fallbackCoordinates[0]);
+    const latitude = Number(req.query.latitude ?? fallbackCoordinates[1]);
+    const maxDistance = Number(req.query.maxDistance || 20000);
+
+    if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) {
+      return res.status(400).json({ success: false, message: 'Valid longitude and latitude are required.' });
+    }
+
+    const ngoUsers = await User.find({
+      role: 'ngo',
+      isActive: true,
+      isVerified: true,
+      location: {
+        $near: {
+          $geometry: { type: 'Point', coordinates: [longitude, latitude] },
+          $maxDistance: maxDistance
+        }
+      }
+    }).select('name phone email location');
+
+    const ngoProfiles = await NGOProfile.find({
+      user: { $in: ngoUsers.map((user) => user._id) },
+      isApproved: true
+    }).select('user orgName description resources activeZones contactEmail contactPhone');
+
+    const profileByUserId = new Map(ngoProfiles.map((profile) => [String(profile.user), profile]));
+
+    const data = ngoUsers
+      .map((user) => {
+        const profile = profileByUserId.get(String(user._id));
+        if (!profile) return null;
+
+        return {
+          _id: profile._id,
+          userId: user._id,
+          orgName: profile.orgName,
+          description: profile.description,
+          resources: profile.resources,
+          activeZones: profile.activeZones,
+          contactEmail: profile.contactEmail || user.email,
+          contactPhone: profile.contactPhone || user.phone,
+          location: user.location
+        };
+      })
+      .filter(Boolean);
+
+    return res.json({ success: true, count: data.length, data });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 router.put('/resources', protect, authorize('ngo'), async (req, res) => {
   try {
     const approval = await requireApprovedNGO(req.user._id);

@@ -15,7 +15,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Navbar from './components/Navbar';
 import { useAuth } from './components/AuthContext';
 
-// 🔥 ADD THIS
+
 import { Toaster } from "react-hot-toast";
 
 function App() {

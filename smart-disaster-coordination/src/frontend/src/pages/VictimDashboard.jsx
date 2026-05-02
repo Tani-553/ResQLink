@@ -1,15 +1,16 @@
-// src/frontend/pages/VictimDashboard.jsx
-import MapView from "../components/MapView";
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../components/AuthContext';
 import { useLang } from '../components/LanguageContext';
+import MapView from '../components/MapView';
+import { Alert, Button, Card, SectionHeader } from '../components/UI.jsx';
+import usePageTranslation from '../hooks/usePageTranslation.js';
 
 const REQUEST_TYPES = [
   { value: 'rescue', color: '#E53E3E' },
   { value: 'medical', color: '#D69E2E' },
   { value: 'food', color: '#38A169' },
   { value: 'shelter', color: '#3B82F6' },
-  { value: 'clothes', color: '#8b5cf6' },
+  { value: 'clothes', color: '#8b5cf6' }
 ];
 
 const PRIORITY_BY_TYPE = {
@@ -20,7 +21,7 @@ const PRIORITY_BY_TYPE = {
   clothes: 'low'
 };
 
-const statusColor = {
+const STATUS_COLORS = {
   pending: '#F39C12',
   assigned: '#E74C3C',
   'in-progress': '#C0392B',
@@ -31,200 +32,163 @@ const statusColor = {
 export default function VictimDashboard() {
   const { authFetch } = useAuth();
   const { t } = useLang();
-
   const [myRequests, setMyRequests] = useState([]);
   const [form, setForm] = useState({
     type: 'rescue',
     description: '',
-    priority: PRIORITY_BY_TYPE['rescue']
+    priority: PRIORITY_BY_TYPE.rescue
   });
-
   const [locationState, setLocationState] = useState(null);
   const [resolvingId, setResolvingId] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [submitSuccess, setSubmitSuccess] = useState('');
 
-  // 📍 Get location
+  usePageTranslation([
+    'Victim Dashboard',
+    'Update Location',
+    'SOS request sent successfully.',
+    'Set or update your location before sending an SOS request.',
+    'Describe your situation before sending an SOS request.',
+    'Unable to send SOS request.'
+  ]);
+
   useEffect(() => {
-  const saved = localStorage.getItem("victim_location");
+    const savedLocation = localStorage.getItem('victim_location');
 
-  if (saved) {
-    setLocationState(JSON.parse(saved));
-  } else {
-    navigator.geolocation.getCurrentPosition((pos) => {
-      const loc = {
-        latitude: pos.coords.latitude,
-        longitude: pos.coords.longitude
-      };
-      setLocationState(loc);
+    if (savedLocation) {
+      setLocationState(JSON.parse(savedLocation));
+    } else {
+      navigator.geolocation.getCurrentPosition((position) => {
+        const nextLocation = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude
+        };
+        setLocationState(nextLocation);
+        localStorage.setItem('victim_location', JSON.stringify(nextLocation));
+      });
+    }
 
-      // 💾 save permanently
-      localStorage.setItem("victim_location", JSON.stringify(loc));
-    });
-  }
+    fetchRequests();
+  }, []);
 
-  fetchRequests();
-}, []);
+  const translatedTypeOptions = useMemo(
+    () => REQUEST_TYPES.map((type) => ({ ...type, label: t(type.value, type.value) })),
+    [t]
+  );
 
   const fetchRequests = async () => {
-    const res = await authFetch('/requests/my').then(r => r.json());
-    if (res?.success) setMyRequests(res.data);
+    const response = await authFetch('/requests/my').then((result) => result.json());
+    if (response?.success) setMyRequests(response.data);
   };
 
-  // 🔥 Auto priority
   const handleTypeChange = (type) => {
-    setForm(f => ({
-      ...f,
+    setForm((current) => ({
+      ...current,
       type,
       priority: PRIORITY_BY_TYPE[type]
     }));
   };
 
-  // 🚨 Submit SOS
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setSubmitError('');
+    setSubmitSuccess('');
 
-    const res = await authFetch('/requests', {
-      method: 'POST',
-      body: JSON.stringify({
-        ...form,
-        latitude: locationState.latitude,
-        longitude: locationState.longitude
-      })
-    }).then(r => r.json());
+    if (!locationState?.latitude || !locationState?.longitude) {
+      setSubmitError(t('setLocationBeforeSos', 'Set or update your location before sending an SOS request.'));
+      return;
+    }
 
-    if (res.success) {
-      setMyRequests(prev => [res.data, ...prev]);
+    if (!form.description.trim()) {
+      setSubmitError(t('describeSituationBeforeSos', 'Describe your situation before sending an SOS request.'));
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      const response = await authFetch('/requests', {
+        method: 'POST',
+        body: JSON.stringify({
+          ...form,
+          description: form.description.trim(),
+          latitude: locationState.latitude,
+          longitude: locationState.longitude
+        })
+      });
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.message || t('unableToSendSos', 'Unable to send SOS request.'));
+      }
+
+      setMyRequests((prev) => [result.data, ...prev]);
       setForm({
         type: 'rescue',
         description: '',
-        priority: PRIORITY_BY_TYPE['rescue']
+        priority: PRIORITY_BY_TYPE.rescue
       });
+      setSubmitSuccess(t('sosRequestSentSuccessfully', 'SOS request sent successfully.'));
+    } catch (error) {
+      setSubmitError(error.message || t('unableToSendSos', 'Unable to send SOS request.'));
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  // ✅ Resolve
   const handleResolveRequest = async (id) => {
     setResolvingId(id);
-
     await authFetch(`/requests/${id}/status`, {
       method: 'PUT',
       body: JSON.stringify({ status: 'resolved' })
     });
-
-    setMyRequests(prev =>
-      prev.map(r => r._id === id ? { ...r, status: 'resolved' } : r)
-    );
-
+    setMyRequests((prev) => prev.map((request) => (request._id === id ? { ...request, status: 'resolved' } : request)));
     setResolvingId('');
   };
-  const updateLocation = () => {
-  navigator.geolocation.getCurrentPosition((pos) => {
-    const loc = {
-      latitude: pos.coords.latitude,
-      longitude: pos.coords.longitude
-    };
 
-    setLocationState(loc);
-    localStorage.setItem("victim_location", JSON.stringify(loc));
-  });
-};
+  const updateLocation = () => {
+    navigator.geolocation.getCurrentPosition((position) => {
+      const nextLocation = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude
+      };
+
+      setLocationState(nextLocation);
+      localStorage.setItem('victim_location', JSON.stringify(nextLocation));
+    });
+  };
 
   return (
-    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px', color: '#fff' }}>
+    <div style={{ maxWidth: '900px', margin: '0 auto', padding: '24px', color: 'var(--text-strong)' }}>
+      <SectionHeader title={t('victimDashboardTitle', 'Victim Dashboard')} />
 
-      {/* HEADER */}
-      <h2 style={{ marginBottom: '20px' }}>
-        🆘 Victim Dashboard
-      </h2>
-
-      {/* TOP SECTION */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: '20px',
-        marginBottom: '24px'
-      }}>
-
-        {/* LOCATION */}
-        <div style={{
-          background: '#2A2A3D',
-          border: '1px solid #4A2828',
-          borderRadius: '14px',
-          padding: '20px'
-        }}>
-          <h3 style={{ color: '#C0392B' }}>Set your location</h3>
-
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
+        <Card>
+          <h3 style={{ color: 'var(--brand-strong)' }}>{t('setYourLocation', 'Set your location')}</h3>
           <p>
-            Latitude: {locationState?.latitude?.toFixed(5)},
-            Longitude: {locationState?.longitude?.toFixed(5)}
+            {t('latitude', 'Latitude')}: {locationState?.latitude?.toFixed(5) || '--'},{' '}
+            {t('longitude', 'Longitude')}: {locationState?.longitude?.toFixed(5) || '--'}
           </p>
+          <Button onClick={updateLocation} style={{ width: '100%', marginTop: '10px' }}>{t('updateLocation', 'Update Location')}</Button>
+        </Card>
 
-          <button
-  onClick={updateLocation}
-  style={{
-    width: '100%',
-    marginTop: '10px',
-    background: '#C0392B',
-    color: '#fff',
-    padding: '10px',
-    borderRadius: '10px',
-    border: 'none'
-  }}
->
-  Update Location
-</button>
-        </div>
-
-        {/* MAP PLACEHOLDER */}
-        <div style={{
-          background: '#2A2A3D',
-          border: '1px solid #4A2828',
-          borderRadius: '14px',
-          padding: '20px'
-        }}>
-          <h3 style={{ color: '#C0392B' }}>Show Map</h3>
-
-          <div style={{
-  background: '#2A2A3D',
-  border: '1px solid #4A2828',
-  borderRadius: '14px',
-  padding: '20px'
-}}>
-  <h3 style={{ color: '#C0392B' }}>Show Map</h3>
-
-  <div style={{
-    height: '220px',
-    borderRadius: '10px',
-    overflow: 'hidden'   // 🔥 important
-  }}>
-    <MapView
-      userLocation={locationState}
-      requests={myRequests}
-    />
-  </div>
-</div>
-        </div>
-
+        <Card>
+          <h3 style={{ color: 'var(--brand-strong)' }}>{t('showMap', 'Show Map')}</h3>
+          <div style={{ height: '220px', borderRadius: '10px', overflow: 'hidden' }}>
+            <MapView userLocation={locationState} requests={myRequests} />
+          </div>
+        </Card>
       </div>
 
-      {/* SOS FORM */}
-      <div style={{
-        background: '#2A2A3D',
-        border: '1px solid #4A2828',
-        borderRadius: '14px',
-        padding: '24px',
-        marginBottom: '24px'
-      }}>
+      <Card style={{ padding: '24px', marginBottom: '24px' }}>
+        <h3 style={{ color: 'var(--brand-strong)' }}>{t('submitRequest', 'Send SOS Request')}</h3>
 
-        <h3 style={{ color: '#C0392B' }}>Send SOS Request</h3>
+        {submitError && <Alert style={{ marginBottom: '14px' }}>{submitError}</Alert>}
+        {submitSuccess && <Alert tone="success" style={{ marginBottom: '14px' }}>{submitSuccess}</Alert>}
 
-        {/* TYPE BUTTONS */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(5,1fr)',
-          gap: '10px',
-          marginBottom: '14px'
-        }}>
-          {REQUEST_TYPES.map(type => {
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: '10px', marginBottom: '14px' }}>
+          {translatedTypeOptions.map((type) => {
             const active = form.type === type.value;
 
             return (
@@ -241,109 +205,67 @@ export default function VictimDashboard() {
                   color: active ? '#fff' : '#9ca3af'
                 }}
               >
-                {type.value}
+                {type.label}
               </button>
             );
           })}
         </div>
 
-        {/* TEXTAREA */}
         <textarea
           value={form.description}
-          onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-          placeholder="Describe your situation"
-          style={{
-            width: '100%',
-            background: '#363650',
-            border: '1px solid #4A2828',
-            borderRadius: '8px',
-            color: '#fff',
-            padding: '10px',
-            marginBottom: '10px'
-          }}
+          onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
+          placeholder={t('description', 'Describe your situation')}
+          style={{ width: '100%', background: 'var(--surface-2)', border: '1px solid var(--border-1)', borderRadius: '8px', color: 'var(--text-strong)', padding: '10px', marginBottom: '10px' }}
         />
 
-        {/* PRIORITY */}
         <select
           value={form.priority}
-          onChange={e => setForm(f => ({ ...f, priority: e.target.value }))}
-          style={{
-            width: '100%',
-            padding: '10px',
-            borderRadius: '8px',
-            marginBottom: '10px'
-          }}
+          onChange={(event) => setForm((current) => ({ ...current, priority: event.target.value }))}
+          style={{ width: '100%', padding: '10px', borderRadius: '8px', marginBottom: '10px', background: 'var(--surface-2)', border: '1px solid var(--border-1)', color: 'var(--text-strong)' }}
         >
-          <option value="critical">🔴 Critical</option>
-          <option value="high">🟠 High</option>
-          <option value="medium">🟡 Medium</option>
-          <option value="low">🟢 Low</option>
+          <option value="critical">{t('critical', 'Critical')}</option>
+          <option value="high">{t('high', 'High')}</option>
+          <option value="medium">{t('medium', 'Medium')}</option>
+          <option value="low">{t('low', 'Low')}</option>
         </select>
 
-        <button
-          onClick={handleSubmit}
-          style={{
-            width: '100%',
-            padding: '12px',
-            background: '#C0392B',
-            color: '#fff',
-            borderRadius: '10px',
-            border: 'none'
-          }}
-        >
-          🚨 Send SOS Request
-        </button>
+        <Button onClick={handleSubmit} type="button" disabled={submitting} style={{ width: '100%', padding: '12px', opacity: submitting ? 0.7 : 1, cursor: submitting ? 'not-allowed' : 'pointer' }}>
+          {submitting ? t('submitting', 'Submitting...') : t('submitRequest', 'Send SOS Request')}
+        </Button>
+      </Card>
 
-      </div>
+      <h3 style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 700, marginBottom: '12px' }}>{t('myRequests', 'My Requests')}</h3>
 
-      {/* MY REQUESTS */}
-      <h3 style={{
-        color: '#9ca3af',
-        fontSize: '13px',
-        fontWeight: 700,
-        marginBottom: '12px'
-      }}>
-        {t('myRequests')}
-      </h3>
-
-      {myRequests.map(r => {
-        const typeObj = REQUEST_TYPES.find(rt => rt.value === r.type);
-        const color = typeObj?.color || '#ccc';
+      {myRequests.map((request) => {
+        const type = REQUEST_TYPES.find((item) => item.value === request.type);
+        const color = type?.color || '#ccc';
 
         return (
-          <div key={r._id} style={{
-            background: '#2A2A3D',
-            border: `1px solid ${color}55`,
-            borderRadius: '12px',
-            padding: '16px',
-            marginBottom: '10px',
-            display: 'flex',
-            justifyContent: 'space-between'
-          }}>
+          <Card key={request._id} style={{ border: `1px solid ${color}55`, padding: '16px', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
             <div>
-              <div style={{ color, fontWeight: 700 }}>
-                {r.type}
-              </div>
-              <div style={{ fontSize: '12px' }}>
-                {r.description}
-              </div>
+              <div style={{ color, fontWeight: 700 }}>{t(request.type, request.type)}</div>
+              <div style={{ fontSize: '12px' }}>{t(request.description, request.description)}</div>
             </div>
 
-            <div>
-              <span style={{
-                color: statusColor[r.status],
-                border: `1px solid ${statusColor[r.status]}`,
-                padding: '4px 10px',
-                borderRadius: '20px',
-                fontSize: '11px'
-              }}>
-                {r.status}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ color: STATUS_COLORS[request.status], border: `1px solid ${STATUS_COLORS[request.status]}`, padding: '4px 10px', borderRadius: '20px', fontSize: '11px' }}>
+                {t(request.status, request.status)}
               </span>
+              {request.status !== 'resolved' && (
+                <Button
+                  type="button"
+                  onClick={() => handleResolveRequest(request._id)}
+                  disabled={resolvingId === request._id}
+                  variant="success"
+                  style={{ padding: '8px 12px' }}
+                >
+                  {resolvingId === request._id ? t('updating', 'Updating...') : t('iHaveBeenHelped', 'I Have Been Helped')}
+                </Button>
+              )}
             </div>
-          </div>
+          </Card>
         );
       })}
-
     </div>
   );
 }

@@ -1,5 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../components/AuthContext.jsx';
+import { useLang } from '../components/LanguageContext.jsx';
+import { Alert, Badge, Button, Card, SectionHeader } from '../components/UI.jsx';
+import usePageTranslation from '../hooks/usePageTranslation.js';
 
 const API_ROOT = (process.env.REACT_APP_API_URL || 'http://localhost:5000/api').replace(/\/api$/, '');
 
@@ -12,26 +15,19 @@ const emptyResources = {
 
 const inputStyle = {
   width: '100%',
-  background: '#1f2937',
-  border: '1px solid #374151',
+  background: 'var(--surface-2)',
+  border: '1px solid var(--border-1)',
   borderRadius: '8px',
-  color: '#fff',
+  color: 'var(--text-strong)',
   padding: '10px 14px',
   fontSize: '13px',
   marginBottom: '12px',
   boxSizing: 'border-box'
 };
 
-const cardStyle = {
-  background: '#111827',
-  border: '1px solid #1e3a5f',
-  borderRadius: '14px',
-  padding: '18px'
-};
-
 export default function NGODashboard() {
   const { authFetch } = useAuth();
-
+  const { t } = useLang();
   const [profile, setProfile] = useState(null);
   const [resources, setResources] = useState(emptyResources);
   const [activeVolunteers, setActiveVolunteers] = useState([]);
@@ -54,9 +50,28 @@ export default function NGODashboard() {
     zone: ''
   });
 
+  usePageTranslation([
+    'Unable to load NGO profile.',
+    'Unable to load available field volunteers.',
+    'Failed to register NGO profile',
+    'Unable to register NGO profile',
+    'Failed to save resources',
+    'Failed to assign volunteer'
+  ]);
+
   useEffect(() => {
     loadDashboard();
   }, []);
+
+  const resourceBoxes = useMemo(
+    () => [
+      { label: t('reliefKits', 'Relief Kits'), resourceKey: 'reliefKits', shortLabel: t('reliefKits', 'Relief Kits'), color: '#60a5fa' },
+      { label: t('shelters', 'Shelters'), resourceKey: 'shelters', shortLabel: t('shelters', 'Shelters'), color: '#4ade80' },
+      { label: t('vehicles', 'Vehicles'), resourceKey: 'vehicles', shortLabel: t('vehicles', 'Vehicles'), color: '#fbbf24' },
+      { label: t('medical', 'Medical'), resourceKey: 'medicalSupplies', shortLabel: t('medical', 'Medical'), color: '#f87171' }
+    ],
+    [t]
+  );
 
   const loadDashboard = async () => {
     setLoading(true);
@@ -80,8 +95,8 @@ export default function NGODashboard() {
       } else {
         setActiveVolunteers([]);
       }
-    } catch (err) {
-      setError('Unable to load NGO profile.');
+    } catch {
+      setError(t('unableToLoadNgoProfile', 'Unable to load NGO profile.'));
       setProfile(null);
     } finally {
       setLoading(false);
@@ -95,15 +110,12 @@ export default function NGODashboard() {
       setActiveVolunteers(data.data || []);
       return;
     }
-    throw new Error(data.message || 'Unable to load available field volunteers.');
+    throw new Error(data.message || t('unableToLoadFieldVolunteers', 'Unable to load available field volunteers.'));
   };
 
   const handleRegisterChange = (event) => {
     const { name, value } = event.target;
-    setRegisterForm((prev) => ({
-      ...prev,
-      [name]: value
-    }));
+    setRegisterForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleRegister = async (event) => {
@@ -123,18 +135,17 @@ export default function NGODashboard() {
         method: 'POST',
         body: formData
       });
-
       const data = await response.json();
 
       if (!data.success) {
-        throw new Error(data.message || 'Failed to register NGO profile');
+        throw new Error(data.message || t('failedToRegisterNgoProfile', 'Failed to register NGO profile'));
       }
 
       setProfile(data.data);
       setResources(data.data.resources || emptyResources);
       setDocuments([]);
     } catch (err) {
-      setError(err.message || 'Unable to register NGO profile');
+      setError(err.message || t('unableToRegisterNgoProfile', 'Unable to register NGO profile'));
     } finally {
       setRegistering(false);
     }
@@ -148,18 +159,17 @@ export default function NGODashboard() {
         method: 'PUT',
         body: JSON.stringify(resources)
       });
-
       const data = await response.json();
 
       if (!data.success) {
-        throw new Error(data.message || 'Failed to save resources');
+        throw new Error(data.message || t('failedToSaveResources', 'Failed to save resources'));
       }
 
       setProfile(data.data);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (err) {
-      setError(err.message || 'Unable to save resources');
+      setError(err.message || t('unableToSaveResources', 'Unable to save resources'));
     }
   };
 
@@ -177,14 +187,14 @@ export default function NGODashboard() {
       const data = await response.json();
 
       if (!data.success) {
-        throw new Error(data.message || 'Failed to assign volunteer');
+        throw new Error(data.message || t('failedToAssignVolunteer', 'Failed to assign volunteer'));
       }
 
       setProfile(data.data);
-      setAssignSuccess('Field volunteer assigned successfully.');
+      setAssignSuccess(t('fieldVolunteerAssignedSuccessfully', 'Field volunteer assigned successfully.'));
       setAssignForm((prev) => ({ ...prev, zone: '' }));
     } catch (err) {
-      setAssignError(err.message || 'Unable to assign volunteer');
+      setAssignError(err.message || t('unableToAssignVolunteer', 'Unable to assign volunteer'));
     } finally {
       setAssigning(false);
     }
@@ -192,128 +202,43 @@ export default function NGODashboard() {
 
   const assignedVolunteerIds = new Set((profile?.volunteers || []).map((volunteer) => String(volunteer._id || volunteer)));
 
-  const ResourceBox = ({ label, resourceKey, icon, color }) => (
-    <div
-      style={{
-        background: '#111827',
-        border: `1px solid ${color}44`,
-        borderRadius: '12px',
-        padding: '16px',
-        textAlign: 'center'
-      }}
-    >
-      <div style={{ fontSize: '24px', marginBottom: '8px' }}>{icon}</div>
+  const ResourceBox = ({ label, resourceKey, shortLabel, color }) => (
+    <div style={{ background: 'var(--surface-1)', border: `1px solid ${color}44`, borderRadius: '12px', padding: '16px', textAlign: 'center', boxShadow: 'var(--shadow-soft)' }}>
+      <div style={{ fontSize: '24px', marginBottom: '8px' }}>{shortLabel}</div>
       <input
         type="number"
         value={resources[resourceKey] || 0}
         min={0}
-        onChange={(event) =>
-          setResources((prev) => ({
-            ...prev,
-            [resourceKey]: Number(event.target.value)
-          }))
-        }
-        style={{
-          width: '70px',
-          background: '#1f2937',
-          border: `1px solid ${color}`,
-          borderRadius: '8px',
-          color,
-          fontWeight: 800,
-          fontSize: '20px',
-          textAlign: 'center',
-          padding: '6px'
-        }}
+        onChange={(event) => setResources((prev) => ({ ...prev, [resourceKey]: Number(event.target.value) }))}
+        style={{ width: '70px', background: 'var(--surface-2)', border: `1px solid ${color}`, borderRadius: '8px', color, fontWeight: 800, fontSize: '20px', textAlign: 'center', padding: '6px' }}
       />
-      <div style={{ color: '#6b7280', fontSize: '11px', marginTop: '6px' }}>{label}</div>
+      <div style={{ color: 'var(--text-subtle)', fontSize: '11px', marginTop: '6px' }}>{label}</div>
     </div>
   );
 
   if (loading) {
-    return (
-      <div style={{ color: '#fff', textAlign: 'center', marginTop: '40px' }}>
-        Loading NGO dashboard...
-      </div>
-    );
+    return <div style={{ color: 'var(--text-strong)', textAlign: 'center', marginTop: '40px' }}>{t('loadingNgoDashboard', 'Loading NGO dashboard...')}</div>;
   }
 
   if (!profile) {
     return (
       <div style={{ maxWidth: '720px', margin: '40px auto', padding: '24px' }}>
-        <div style={cardStyle}>
-          <h3 style={{ color: '#fbbf24', fontWeight: 700, marginBottom: '12px' }}>
-            Complete Your NGO Profile
-          </h3>
-
-          <p style={{ color: '#9ca3af', fontSize: '13px', marginBottom: '18px', lineHeight: 1.6 }}>
-            Upload your organization documents so the admin can review them. Your NGO dashboard opens only after approval.
+        <Card>
+          <h3 style={{ color: '#fbbf24', fontWeight: 700, marginBottom: '12px' }}>{t('completeNgoProfile', 'Complete Your NGO Profile')}</h3>
+          <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginBottom: '18px', lineHeight: 1.6 }}>
+            {t('uploadDocumentsMessage', 'Upload your organization documents so the admin can review them. Your NGO dashboard opens only after approval.')}
           </p>
 
-          {error && (
-            <div
-              style={{
-                background: '#7f1d1d',
-                border: '1px solid #ef4444',
-                borderRadius: '8px',
-                padding: '10px 14px',
-                color: '#fca5a5',
-                fontSize: '13px',
-                marginBottom: '12px'
-              }}
-            >
-              {error}
-            </div>
-          )}
+          {error && <Alert style={{ marginBottom: '12px' }}>{error}</Alert>}
 
           <form onSubmit={handleRegister}>
-            <input
-              name="orgName"
-              value={registerForm.orgName}
-              onChange={handleRegisterChange}
-              placeholder="NGO Name"
-              required
-              style={inputStyle}
-            />
+            <input name="orgName" value={registerForm.orgName} onChange={handleRegisterChange} placeholder={t('ngoName', 'NGO Name')} required style={inputStyle} />
+            <textarea name="description" value={registerForm.description} onChange={handleRegisterChange} placeholder={t('describeNgo', 'Describe your NGO and support areas')} rows={4} style={{ ...inputStyle, resize: 'none' }} />
+            <input name="contactEmail" type="email" value={registerForm.contactEmail} onChange={handleRegisterChange} placeholder={t('contactEmail', 'Contact Email')} required style={inputStyle} />
+            <input name="contactPhone" value={registerForm.contactPhone} onChange={handleRegisterChange} placeholder={t('contactPhone', 'Contact Phone')} required style={inputStyle} />
 
-            <textarea
-              name="description"
-              value={registerForm.description}
-              onChange={handleRegisterChange}
-              placeholder="Describe your NGO and support areas"
-              rows={4}
-              style={{ ...inputStyle, resize: 'none' }}
-            />
-
-            <input
-              name="contactEmail"
-              type="email"
-              value={registerForm.contactEmail}
-              onChange={handleRegisterChange}
-              placeholder="Contact Email"
-              required
-              style={inputStyle}
-            />
-
-            <input
-              name="contactPhone"
-              value={registerForm.contactPhone}
-              onChange={handleRegisterChange}
-              placeholder="Contact Phone"
-              required
-              style={inputStyle}
-            />
-
-            <label style={{ display: 'block', color: '#cbd5e1', fontSize: '13px', marginBottom: '8px' }}>
-              NGO Verification Documents
-            </label>
-            <input
-              type="file"
-              multiple
-              required
-              onChange={(event) => setDocuments(event.target.files)}
-              style={{ ...inputStyle, padding: '9px 12px' }}
-              accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-            />
+            <label style={{ display: 'block', color: 'var(--text-main)', fontSize: '13px', marginBottom: '8px' }}>{t('ngoVerificationDocuments', 'NGO Verification Documents')}</label>
+            <input type="file" multiple required onChange={(event) => setDocuments(event.target.files)} style={{ ...inputStyle, padding: '9px 12px' }} accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" />
 
             {documents.length > 0 && (
               <div style={{ marginBottom: '14px', color: '#93c5fd', fontSize: '12px', lineHeight: 1.6 }}>
@@ -323,24 +248,11 @@ export default function NGODashboard() {
               </div>
             )}
 
-            <button
-              type="submit"
-              disabled={registering}
-              style={{
-                background: '#1a3a6b',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '10px 24px',
-                fontWeight: 700,
-                fontSize: '13px',
-                cursor: 'pointer'
-              }}
-            >
-              {registering ? 'Submitting...' : 'Submit NGO For Review'}
-            </button>
+            <Button type="submit" disabled={registering} style={{ background: '#1a3a6b', padding: '10px 24px', fontSize: '13px' }}>
+              {registering ? t('submitting', 'Submitting...') : t('submitNgoForReview', 'Submit NGO For Review')}
+            </Button>
           </form>
-        </div>
+        </Card>
       </div>
     );
   }
@@ -348,121 +260,65 @@ export default function NGODashboard() {
   if (!profile.isApproved) {
     return (
       <div style={{ maxWidth: '760px', margin: '40px auto', padding: '24px' }}>
-        <div style={cardStyle}>
-          <h2 style={{ color: '#fff', fontSize: '22px', marginTop: 0, marginBottom: '10px' }}>{profile.orgName}</h2>
+        <Card>
+          <h2 style={{ color: 'var(--text-strong)', fontSize: '22px', marginTop: 0, marginBottom: '10px' }}>{profile.orgName}</h2>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: '#7f1d1d', border: '1px solid #ef4444', color: '#fca5a5', borderRadius: '999px', padding: '6px 14px', fontSize: '12px', fontWeight: 700, marginBottom: '18px' }}>
-            Pending Admin Approval
+            {t('pendingAdminApproval', 'Pending Admin Approval')}
           </div>
-          <p style={{ color: '#cbd5e1', lineHeight: 1.7, marginBottom: '18px' }}>
-            Your organization details and uploaded documents have been submitted. The full NGO dashboard will unlock only after an admin reviews and approves this organization.
+          <p style={{ color: 'var(--text-main)', lineHeight: 1.7, marginBottom: '18px' }}>
+            {t('organizationSubmitted', 'Your organization details and uploaded documents have been submitted. The full NGO dashboard will unlock only after an admin reviews and approves this organization.')}
           </p>
 
-          <div style={{ ...cardStyle, border: '1px solid #24324d', padding: '16px', marginBottom: '16px' }}>
-            <div style={{ color: '#9ca3af', fontSize: '12px', marginBottom: '8px' }}>Submitted Documents</div>
-            {!profile.documents?.length && (
-              <div style={{ color: '#6b7280', fontSize: '13px' }}>No documents found.</div>
-            )}
+          <Card style={{ border: '1px solid #24324d', padding: '16px', marginBottom: '16px' }}>
+            <div style={{ color: 'var(--text-muted)', fontSize: '12px', marginBottom: '8px' }}>{t('submittedDocuments', 'Submitted Documents')}</div>
+            {!profile.documents?.length && <div style={{ color: 'var(--text-subtle)', fontSize: '13px' }}>{t('noDocumentsFound', 'No documents found.')}</div>}
             {!!profile.documents?.length && (
               <div style={{ display: 'grid', gap: '8px' }}>
                 {profile.documents.map((document, index) => (
-                  <a
-                    key={`${document.filename}-${index}`}
-                    href={`${API_ROOT}${document.publicUrl}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{ color: '#60a5fa', textDecoration: 'none', fontSize: '13px' }}
-                  >
-                    View document {index + 1}: {document.filename}
+                  <a key={`${document.filename}-${index}`} href={`${API_ROOT}${document.publicUrl}`} target="_blank" rel="noreferrer" style={{ color: '#60a5fa', textDecoration: 'none', fontSize: '13px' }}>
+                    {t('viewDocument', 'View document')} {index + 1}: {document.filename}
                   </a>
                 ))}
               </div>
             )}
-          </div>
+          </Card>
 
-          <div style={{ color: '#94a3b8', fontSize: '13px', lineHeight: 1.6 }}>
-            Contact: {profile.contactEmail || 'No email'} | {profile.contactPhone || 'No phone'}
+          <div style={{ color: 'var(--text-subtle)', fontSize: '13px', lineHeight: 1.6 }}>
+            {t('ngoContactInfo', 'Contact:')} {profile.contactEmail || t('noEmail', 'No email')} | {profile.contactPhone || t('noPhone', 'No phone')}
           </div>
-        </div>
+        </Card>
       </div>
     );
   }
 
   return (
     <div style={{ maxWidth: '1040px', margin: '0 auto', padding: '24px' }}>
-      {error && (
-        <div
-          style={{
-            background: '#7f1d1d',
-            border: '1px solid #ef4444',
-            borderRadius: '8px',
-            padding: '10px 14px',
-            color: '#fca5a5',
-            fontSize: '13px',
-            marginBottom: '12px'
-          }}
-        >
-          {error}
-        </div>
-      )}
+      {error && <Alert style={{ marginBottom: '12px' }}>{error}</Alert>}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '24px', flexWrap: 'wrap' }}>
-        <h2 style={{ color: '#fff', fontSize: '20px', fontWeight: 700, margin: 0 }}>
-          {profile.orgName}
-        </h2>
-
-        <span
-          style={{
-            background: '#14532d',
-            color: '#4ade80',
-            border: '1px solid #22c55e',
-            borderRadius: '12px',
-            padding: '3px 12px',
-            fontSize: '11px',
-            fontWeight: 700
-          }}
-        >
-          Verified NGO
-        </span>
+        <SectionHeader title={profile.orgName} style={{ marginBottom: 0 }} />
+        <Badge color="#22c55e">{t('verifiedNgo', 'Verified NGO')}</Badge>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 1.1fr) minmax(320px, 1fr)', gap: '18px', marginBottom: '20px' }}>
-        <div style={cardStyle}>
-          <p style={{ color: '#9ca3af', fontSize: '13px', marginBottom: '8px' }}>
-            <strong style={{ color: '#fff' }}>Contact Email:</strong> {profile.contactEmail || 'Not added'}
+        <Card>
+          <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginBottom: '8px' }}>
+            <strong style={{ color: 'var(--text-strong)' }}>{t('contactEmail', 'Contact Email')}:</strong> {profile.contactEmail || t('notAdded', 'Not added')}
           </p>
-          <p style={{ color: '#9ca3af', fontSize: '13px', marginBottom: '12px' }}>
-            <strong style={{ color: '#fff' }}>Contact Phone:</strong> {profile.contactPhone || 'Not added'}
+          <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginBottom: '12px' }}>
+            <strong style={{ color: 'var(--text-strong)' }}>{t('contactPhone', 'Contact Phone')}:</strong> {profile.contactPhone || t('notAdded', 'Not added')}
           </p>
-          <p style={{ color: '#9ca3af', fontSize: '13px', margin: 0, lineHeight: 1.5 }}>
-            {profile.description || 'No NGO description has been added yet.'}
-          </p>
-        </div>
+          <p style={{ color: 'var(--text-muted)', fontSize: '13px', margin: 0, lineHeight: 1.5 }}>{profile.description || t('noNgoDescriptionSubmitted', 'No NGO description submitted.')}</p>
+        </Card>
 
-        <div style={cardStyle}>
-          <h3 style={{ color: '#f8fafc', fontSize: '15px', marginTop: 0, marginBottom: '12px' }}>
-            Volunteer Coordination
-          </h3>
-
-          {assignError && (
-            <div style={{ background: '#7f1d1d', border: '1px solid #ef4444', borderRadius: '8px', padding: '10px 12px', color: '#fca5a5', fontSize: '12px', marginBottom: '10px' }}>
-              {assignError}
-            </div>
-          )}
-
-          {assignSuccess && (
-            <div style={{ background: '#052e16', border: '1px solid #22c55e', borderRadius: '8px', padding: '10px 12px', color: '#86efac', fontSize: '12px', marginBottom: '10px' }}>
-              {assignSuccess}
-            </div>
-          )}
+        <Card>
+          <h3 style={{ color: '#f8fafc', fontSize: '15px', marginTop: 0, marginBottom: '12px' }}>{t('volunteerCoordination', 'Volunteer Coordination')}</h3>
+          {assignError && <Alert style={{ marginBottom: '10px' }}>{assignError}</Alert>}
+          {assignSuccess && <Alert tone="success" style={{ marginBottom: '10px' }}>{assignSuccess}</Alert>}
 
           <form onSubmit={handleAssign}>
-            <select
-              value={assignForm.volunteerId}
-              onChange={(event) => setAssignForm((prev) => ({ ...prev, volunteerId: event.target.value }))}
-              required
-              style={inputStyle}
-            >
-              <option value="">Select field volunteer</option>
+            <select value={assignForm.volunteerId} onChange={(event) => setAssignForm((prev) => ({ ...prev, volunteerId: event.target.value }))} required style={inputStyle}>
+              <option value="">{t('selectFieldVolunteer', 'Select field volunteer')}</option>
               {activeVolunteers.map((volunteer) => (
                 <option key={volunteer._id} value={volunteer._id}>
                   {volunteer.name} ({volunteer.phone})
@@ -470,159 +326,61 @@ export default function NGODashboard() {
               ))}
             </select>
 
-            <input
-              value={assignForm.zone}
-              onChange={(event) => setAssignForm((prev) => ({ ...prev, zone: event.target.value }))}
-              placeholder="Assign zone, e.g. Zone-4"
-              required
-              style={inputStyle}
-            />
+            <input value={assignForm.zone} onChange={(event) => setAssignForm((prev) => ({ ...prev, zone: event.target.value }))} placeholder={t('assignZoneExample', 'Assign zone, e.g. Zone-4')} required style={inputStyle} />
 
-            <button
-              type="submit"
-              disabled={assigning}
-              style={{
-                background: '#1d4ed8',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '10px 18px',
-                fontWeight: 700,
-                fontSize: '13px',
-                cursor: 'pointer'
-              }}
-            >
-              {assigning ? 'Assigning...' : 'Assign Volunteer'}
-            </button>
+            <Button type="submit" disabled={assigning} style={{ background: '#1d4ed8', padding: '10px 18px', fontSize: '13px' }}>
+              {assigning ? t('assigning', 'Assigning...') : t('assignVolunteer', 'Assign Volunteer')}
+            </Button>
           </form>
-        </div>
+        </Card>
       </div>
 
-      <h3
-        style={{
-          color: '#9ca3af',
-          fontSize: '12px',
-          fontWeight: 700,
-          letterSpacing: '1px',
-          textTransform: 'uppercase',
-          marginBottom: '14px'
-        }}
-      >
-        Resource Inventory
-      </h3>
+      <h3 style={{ color: '#9ca3af', fontSize: '12px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '14px' }}>{t('resourceInventory', 'Resource Inventory')}</h3>
 
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(4, minmax(120px, 1fr))',
-          gap: '12px',
-          marginBottom: '16px'
-        }}
-      >
-        <ResourceBox label="Relief Kits" resourceKey="reliefKits" icon="Kit" color="#60a5fa" />
-        <ResourceBox label="Shelters" resourceKey="shelters" icon="Shelter" color="#4ade80" />
-        <ResourceBox label="Vehicles" resourceKey="vehicles" icon="Fleet" color="#fbbf24" />
-        <ResourceBox label="Medical" resourceKey="medicalSupplies" icon="Med" color="#f87171" />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(120px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+        {resourceBoxes.map((resource) => (
+          <ResourceBox key={resource.resourceKey} {...resource} />
+        ))}
       </div>
 
-      <button
-        onClick={handleSaveResources}
-        style={{
-          background: '#1a3a6b',
-          color: '#fff',
-          border: 'none',
-          borderRadius: '8px',
-          padding: '10px 24px',
-          fontWeight: 700,
-          fontSize: '13px',
-          cursor: 'pointer',
-          marginBottom: '24px'
-        }}
-      >
-        {saved ? 'Saved!' : 'Save Resources'}
-      </button>
+      <Button onClick={handleSaveResources} style={{ background: '#1a3a6b', padding: '10px 24px', fontSize: '13px', marginBottom: '24px' }}>
+        {saved ? t('savedExclamation', 'Saved!') : t('saveResources', 'Save Resources')}
+      </Button>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 1fr) minmax(320px, 1.2fr)', gap: '18px' }}>
-        <div style={cardStyle}>
-          <h3
-            style={{
-              color: '#9ca3af',
-              fontSize: '12px',
-              fontWeight: 700,
-              letterSpacing: '1px',
-              textTransform: 'uppercase',
-              marginTop: 0,
-              marginBottom: '12px'
-            }}
-          >
-            Active Zones ({profile.activeZones?.length || 0})
+        <Card>
+          <h3 style={{ color: '#9ca3af', fontSize: '12px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', marginTop: 0, marginBottom: '12px' }}>
+            {t('activeZones', 'Active Zones')} ({profile.activeZones?.length || 0})
           </h3>
-
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             {(profile.activeZones || []).map((zone) => (
-              <span
-                key={zone}
-                style={{
-                  background: '#1e3a5f',
-                  color: '#60a5fa',
-                  border: '1px solid #3b82f6',
-                  borderRadius: '20px',
-                  padding: '4px 14px',
-                  fontSize: '12px',
-                  fontWeight: 700
-                }}
-              >
+              <span key={zone} style={{ background: '#1e3a5f', color: '#60a5fa', border: '1px solid #3b82f6', borderRadius: '20px', padding: '4px 14px', fontSize: '12px', fontWeight: 700 }}>
                 {zone}
               </span>
             ))}
-
-            {!profile.activeZones?.length && (
-              <p style={{ color: '#4b5563', fontSize: '13px' }}>
-                No active zones assigned yet.
-              </p>
-            )}
+            {!profile.activeZones?.length && <p style={{ color: '#4b5563', fontSize: '13px' }}>{t('noActiveZonesAssignedYet', 'No active zones assigned yet.')}</p>}
           </div>
-        </div>
+        </Card>
 
-        <div style={cardStyle}>
+        <Card>
           <h3 style={{ color: '#9ca3af', fontSize: '12px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', marginTop: 0, marginBottom: '12px' }}>
-            Assigned Field Volunteers ({profile.volunteers?.length || 0})
+            {t('assignedFieldVolunteers', 'Assigned Field Volunteers')} ({profile.volunteers?.length || 0})
           </h3>
 
-          {activeVolunteers.length === 0 && (
-            <p style={{ color: '#4b5563', fontSize: '13px', margin: 0 }}>
-              No active volunteers are available in the system right now.
-            </p>
-          )}
+          {activeVolunteers.length === 0 && <p style={{ color: '#4b5563', fontSize: '13px', margin: 0 }}>{t('noActiveVolunteersAvailable', 'No active volunteers are available in the system right now.')}</p>}
 
           {activeVolunteers.map((volunteer) => (
-            <div
-              key={volunteer._id}
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                gap: '12px',
-                padding: '12px 0',
-                borderBottom: '1px solid #1f2937'
-              }}
-            >
+            <div key={volunteer._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '12px 0', borderBottom: '1px solid #1f2937' }}>
               <div>
                 <div style={{ color: '#fff', fontSize: '14px', fontWeight: 700 }}>{volunteer.name}</div>
                 <div style={{ color: '#9ca3af', fontSize: '12px' }}>{volunteer.phone}</div>
               </div>
-              <span
-                style={{
-                  color: assignedVolunteerIds.has(String(volunteer._id)) ? '#4ade80' : '#94a3b8',
-                  fontSize: '12px',
-                  fontWeight: 700
-                }}
-              >
-                {assignedVolunteerIds.has(String(volunteer._id)) ? 'Assigned' : 'Available'}
+              <span style={{ color: assignedVolunteerIds.has(String(volunteer._id)) ? '#4ade80' : '#94a3b8', fontSize: '12px', fontWeight: 700 }}>
+                {assignedVolunteerIds.has(String(volunteer._id)) ? t('assigned', 'Assigned') : t('available', 'Available')}
               </span>
             </div>
           ))}
-        </div>
+        </Card>
       </div>
     </div>
   );
